@@ -15,7 +15,10 @@
 import type { BoardState, Health, Token } from '../types.ts';
 
 export type Op =
-  /** wipe the board and set up an encounter — the only op that drops history */
+  /** move through the adventure; deliberately does NOT touch the board, so a
+   *  conversation scene leaves the table iPad on the map it was showing */
+  | { t: 'goto'; packId: string; encounter: string }
+  /** wipe the board and set up a fight — the only op that drops history */
   | { t: 'scene'; packId: string; encounter: string; mapId: string; tokens: Token[] }
   | { t: 'map'; mapId: string }
   | { t: 'add'; token: Token }
@@ -78,7 +81,8 @@ export function receive(log: LogState, incoming: StampedOp[]): LogState {
 /**
  * Everything before the newest `scene` is history of a fight that is over, so
  * drop it. Without this the log grows for the length of a whole adventure and
- * every reconnection ships all of it.
+ * every reconnection ships all of it. `goto` ops are not a boundary — they move
+ * the party without ending the fight on the table.
  */
 function compact(ops: StampedOp[]): StampedOp[] {
   const sorted = [...ops].sort(compareOps);
@@ -105,8 +109,17 @@ export function materialise(ops: StampedOp[]): BoardState {
 
 function apply(state: BoardState, op: Op): BoardState {
   switch (op.t) {
+    case 'goto':
+      return { ...state, position: { packId: op.packId, encounter: op.encounter } };
     case 'scene':
-      return { packId: op.packId, encounter: op.encounter, mapId: op.mapId, tokens: op.tokens };
+      return {
+        ...state,
+        position: { packId: op.packId, encounter: op.encounter },
+        packId: op.packId,
+        encounter: op.encounter,
+        mapId: op.mapId,
+        tokens: op.tokens,
+      };
     case 'map':
       return { ...state, mapId: op.mapId };
     case 'add':

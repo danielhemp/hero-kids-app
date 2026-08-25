@@ -93,6 +93,8 @@ for (const { page } of [gm, player]) {
 
 console.log('\nGM starts encounter 1');
 await gm.page.locator('.encounters__button').first().click();
+await gm.page.waitForSelector('.scene__title', { timeout: 15_000 });
+await gm.page.click('button:has-text("Set up the board")');
 await gm.page.waitForSelector('.board__map');
 await gm.page.waitForTimeout(400);
 const gmTokens = await gm.page.locator('.standee').count();

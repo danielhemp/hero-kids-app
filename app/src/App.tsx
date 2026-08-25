@@ -7,7 +7,7 @@
  * started here or across the table.
  */
 import { useCallback, useEffect, useState } from 'react';
-import type { Encounter, Health, Manifest, Party } from './types.ts';
+import type { Encounter, EncounterLink, Health, Manifest, Party } from './types.ts';
 import { encounterKey } from './types.ts';
 import { deletePack, forgetAssetUrls, listPacks, loadParty, saveParty } from './store/db.ts';
 import { artLookup, defaultPairing, findCard } from './store/pairing.ts';
@@ -19,8 +19,9 @@ import { PairSheet, LinkChip } from './ui/PairSheet.tsx';
 import { PartySetup } from './ui/PartySetup.tsx';
 import { PlayerScreen } from './ui/PlayerScreen.tsx';
 import { PlayScreen } from './ui/PlayScreen.tsx';
+import { SceneScreen } from './ui/SceneScreen.tsx';
 
-type Screen = 'library' | 'party' | 'play';
+type Screen = 'library' | 'party' | 'scene' | 'board';
 
 export function App() {
   const session = useSession();
@@ -35,7 +36,7 @@ export function App() {
 
   // A sleeping iPad drops the WebRTC link, so hold the screen awake once a
   // fight is on the table.
-  useWakeLock(screen === 'play');
+  useWakeLock(screen === 'board' || screen === 'scene');
 
   const refreshPacks = useCallback(async () => setPacks(await listPacks()), []);
 
@@ -55,14 +56,49 @@ export function App() {
   // Whatever the log says we were doing, go back to it — including after the
   // other iPad sends us a board we did not have.
   useEffect(() => {
-    if (ready && board.encounter && board.mapId) setScreen('play');
-  }, [ready, board.encounter, board.mapId]);
+    if (!ready || !board.position) return;
+    // Come back to whatever was actually happening: if a fight for this
+    // encounter is still laid out, reopen the board rather than making the GM
+    // tap through the text again mid-battle.
+    const fightInProgress = Boolean(board.mapId) && board.encounter === board.position.encounter;
+    setScreen((s) => (s === 'library' ? (fightInProgress ? 'board' : 'scene') : s));
+  }, [ready, board.position, board.mapId, board.encounter]);
 
-  const pack = packs.find((p) => p.id === board.packId);
-  const encounter = pack?.encounters.find((e) => encounterKey(e) === board.encounter);
-  const map = pack?.maps.find((m) => m.id === board.mapId);
+  // Where the party is in the adventure, which is not the same thing as what is
+  // laid out on the board: a conversation moves the party without disturbing the
+  // fight the table iPad is showing.
+  const here = board.position;
+  const pack = packs.find((p) => p.id === here?.packId);
+  const encounter = pack?.encounters.find((e) => encounterKey(e) === here?.encounter);
 
-  const startEncounter = useCallback(
+  const boardPack = packs.find((p) => p.id === board.packId);
+  const boardEncounter = boardPack?.encounters.find((e) => encounterKey(e) === board.encounter);
+  const map = boardPack?.maps.find((m) => m.id === board.mapId);
+
+  /** Resolve an encounter's printed branches to the encounters they name. */
+  const linksOf = (from: Encounter) =>
+    (from.links ?? [])
+      .map((l) => {
+        const target = pack?.encounters.find((e) => encounterKey(e) === l.to);
+        return target ? { link: l, encounter: target } : undefined;
+      })
+      .filter((x): x is { link: EncounterLink; encounter: Encounter } => Boolean(x));
+
+  /** What simply comes next in print order, for scenes the book doesn't route. */
+  const nextInOrder = (from: Encounter) => {
+    const list = pack?.encounters ?? [];
+    return list[list.findIndex((e) => encounterKey(e) === encounterKey(from)) + 1];
+  };
+
+  const goTo = useCallback(
+    (chosenPack: Manifest, key: string) => {
+      session.dispatch({ t: 'goto', packId: chosenPack.id, encounter: key });
+      setScreen('scene');
+    },
+    [session],
+  );
+
+  const startFight = useCallback(
     (chosenPack: Manifest, chosenEncounter: Encounter) => {
       const mapId = chosenEncounter.mapIds?.[0] ?? chosenPack.maps[0]?.id;
       const chosenMap = chosenPack.maps.find((m) => m.id === mapId);
@@ -79,7 +115,7 @@ export function App() {
           party,
         }),
       });
-      setScreen('play');
+      setScreen('board');
     },
     [party, session],
   );
@@ -115,29 +151,52 @@ export function App() {
     );
   }
 
-  if (screen === 'play' && pack && encounter && map) {
-    if (session.role === 'player') {
-      return (
-        <>
-          <PlayerScreen
-            pack={pack}
-            map={map}
-            tokens={board.tokens}
-            party={party}
-            connected={session.link === 'live'}
-            onOpenPairing={() => setPairingOpen(true)}
-            onMove={(id, col, row) => session.dispatch({ t: 'move', id, col, row })}
-          />
-          {pairSheet}
-        </>
-      );
-    }
+  // The table iPad follows the board and nothing else. While the GM reads a
+  // conversation scene it simply keeps showing the last map, which is what was
+  // asked for — a screen that blanks every time somebody talks is worse than one
+  // that sits still.
+  if (session.role === 'player' && boardPack && map) {
+    return (
+      <>
+        <PlayerScreen
+          pack={boardPack}
+          map={map}
+          tokens={board.tokens}
+          party={party}
+          connected={session.link === 'live'}
+          onOpenPairing={() => setPairingOpen(true)}
+          onMove={(id, col, row) => session.dispatch({ t: 'move', id, col, row })}
+        />
+        {pairSheet}
+      </>
+    );
+  }
 
+  if (screen === 'scene' && pack && encounter) {
+    return (
+      <>
+        <SceneScreen
+          pack={pack}
+          encounter={encounter}
+          links={linksOf(encounter)}
+          fallback={nextInOrder(encounter)}
+          link={<LinkChip session={session} />}
+          onOpenPairing={() => setPairingOpen(true)}
+          onGo={(key) => goTo(pack, key)}
+          onStartFight={() => startFight(pack, encounter)}
+          onExit={() => setScreen('library')}
+        />
+        {pairSheet}
+      </>
+    );
+  }
+
+  if (screen === 'board' && boardPack && boardEncounter && map) {
     return (
       <>
         <PlayScreen
-          pack={pack}
-          encounter={encounter}
+          pack={boardPack}
+          encounter={boardEncounter}
           map={map}
           tokens={board.tokens}
           partySize={Math.max(1, party.heroes.length)}
@@ -152,8 +211,8 @@ export function App() {
           onSetArt={(id, art) => session.dispatch({ t: 'art', id, art })}
           onRemove={(id) => session.dispatch({ t: 'remove', id })}
           onAdd={(name, side) => {
-            const pairing = defaultPairing(pack);
-            const art = artLookup(pack, pairing);
+            const pairing = defaultPairing(boardPack);
+            const art = artLookup(boardPack, pairing);
             const card = side === 'monster' ? findCard(pairing.monsterCards, name) : undefined;
             const at = spawnCell(map, board.tokens, side);
             const sameName = board.tokens.filter((t) => t.name.replace(/ \d+$/, '') === name).length;
@@ -163,7 +222,7 @@ export function App() {
                 id: tokenId(),
                 side,
                 name: sameName > 0 ? `${name} ${sameName + 1}` : name,
-                packId: pack.id,
+                packId: boardPack.id,
                 art: card ? art.fileForCard(card.id) : undefined,
                 cardId: card?.id,
                 col: at.col,
@@ -174,7 +233,8 @@ export function App() {
             });
           }}
           onChooseMap={(mapId) => session.dispatch({ t: 'map', mapId })}
-          onRestage={() => startEncounter(pack, encounter)}
+          onRestage={() => startFight(boardPack, boardEncounter)}
+          onBackToScene={() => setScreen('scene')}
           onExit={() => setScreen('library')}
         />
         {pairSheet}
@@ -191,7 +251,7 @@ export function App() {
         onOpenPairing={() => setPairingOpen(true)}
         onImported={() => void refreshPacks()}
         onOpenParty={() => setScreen('party')}
-        onPlay={startEncounter}
+        onPlay={(chosenPack, chosenEncounter) => goTo(chosenPack, encounterKey(chosenEncounter))}
         onDeletePack={async (packId) => {
           forgetAssetUrls(packId);
           await deletePack(packId);

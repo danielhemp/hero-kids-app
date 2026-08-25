@@ -92,21 +92,34 @@ iPad, and the camera may still refuse an untrusted certificate.
 
 ## At the table
 
-- The encounter opens with its monsters staged along the top of the map and the
-  heroes along the bottom. **Drag them onto the numbered circles printed on the
-  map** — the numbers are part of the map image, so the app can't place them for
-  you, but a drag takes a second and is never wrong.
+Tap an encounter and you get **the book, not a battle map**: its intro, the
+boxed text to read out, the role-playing notes, the ability tests. Five of Reign
+of the Dragon's fourteen encounters are pure conversation and have no map at all.
+
+At the bottom of each scene are the routes onward, in the book's own words —
+*"Proceed to Encounter 4a: East Forest Road"* — as buttons. Where the adventure
+branches you get both, and it remembers which way you went.
+
+When a scene is a fight, **Set up the board** lays it out:
+
+- Monsters staged along the top of the map and the heroes along the bottom.
+  **Drag them onto the numbered circles printed on the map** — the numbers are
+  part of the map image, so the app can't place them for you, but a drag takes a
+  second and is never wrong.
 - Drag with one finger, pan with one finger on empty map, pinch to zoom.
 - Tap a mini for its bar: **OK / 1 / 2 / KO** marks damage exactly like the
   printed health boxes, **Card** shows its stat card, **Mini** swaps the artwork,
   **Hide** keeps it off the player screen.
 - **+ Add** in the roster brings on another monster mid-fight.
+- **‹ Scene** goes back to the text without disturbing the board.
 - The board is saved as you go, so a sleeping iPad doesn't lose the fight.
 
 No dice, no damage calculation, no initiative. The app is the map and the minis.
 
 The table iPad shows the map, the party's cards and only the minis you have
-revealed — **Hide** on the GM's token bar keeps a monster staged but unseen.
+revealed — **Hide** on the GM's token bar keeps a monster staged but unseen. It
+stays on the last map through conversation scenes rather than blanking every
+time somebody talks.
 
 If a screen locks the link dies (iOS suspends WebRTC), so pair again — it merges
 rather than picking a winner, because the board is stored as a log of edits and
@@ -124,6 +137,7 @@ npm run spike     # can a ~70-byte QR payload rebuild an SDP that connects?
 npm run e2e       # one iPad: import, stage, drag, snap to the printed grid
 npm run e2e:two   # two iPads: pair, sync, hide, disconnect, re-pair, merge
 npm run e2e:check # the pairing check itself, with the camera allowed and blocked
+npm run e2e:walk  # walk Reign of the Dragon: conversation, fight, branch, reload
 ```
 
 ## Copyright
@@ -165,6 +179,9 @@ that is where the app will snap tokens all evening.
 | square size | the printed ruling, measured by frequency across the whole book |
 | which map belongs to which encounter | matching the small map beside the text against the full-page maps |
 | read-aloud text | it is the only italic type in the book |
+| every section, in printed order | headings are the only bold-italic type |
+| which encounters are fights and which are conversations | whether a roster was printed |
+| where each scene leads | cross-references like "Proceed to Encounter 4a", scored so a map note doesn't win over an instruction |
 | monster roster per party size | "3 Heroes: 5 x Giant Rats", ranges included |
 | card names | OCR of the name line |
 

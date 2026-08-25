@@ -101,6 +101,14 @@ await page.click('button:has-text("Done")');
 console.log('\nopen encounter 1');
 await page.waitForSelector('.encounters__row');
 await page.locator('.encounters__button').first().click();
+// Encounters now open on their text; the board is a deliberate second step.
+await page.waitForSelector('.scene__title', { timeout: 15_000 });
+check(
+  (await page.locator('.sect').count()) > 0,
+  `the scene shows ${await page.locator('.sect').count()} sections of the book`,
+);
+await page.screenshot({ path: path.join(shots, '3a-scene.png') });
+await page.click('button:has-text("Set up the board")');
 await page.waitForSelector('.board__map');
 await page.waitForTimeout(600);
 

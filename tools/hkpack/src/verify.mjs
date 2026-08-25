@@ -94,6 +94,19 @@ for (const file of packs) {
     for (const id of e.mapIds ?? []) {
       check(mapIds.has(id), `encounter ${e.n}: references unknown map ${id}`);
     }
+    check(Array.isArray(e.sections), `encounter ${e.n}: no sections`);
+    // The role-playing scenes are the ones that used to come out empty, so a
+    // scene with nothing in it is the regression worth shouting about.
+    check(
+      e.sections.some((s) => s.body || s.readAloud.length),
+      `encounter ${e.n} "${e.title}" has no text at all`,
+    );
+    for (const link of e.links ?? []) {
+      check(
+        manifest.encounters.some((other) => `${other.n}${other.part ?? ''}` === link.to),
+        `encounter ${e.n}: link points at missing encounter ${link.to}`,
+      );
+    }
     for (const groups of Object.values(e.monstersByHeroCount)) {
       for (const g of groups) {
         check(g.count > 0 && g.count < 20, `encounter ${e.n}: odd count ${g.count} for ${g.name}`);
@@ -108,13 +121,18 @@ for (const file of packs) {
   }
 
   const withMap = manifest.encounters.filter((e) => (e.mapIds ?? []).length).length;
-  const withText = manifest.encounters.filter((e) => e.readAloud.length).length;
+  const withText = manifest.encounters.filter((e) =>
+    e.sections.some((s) => s.readAloud.length),
+  ).length;
   const named = manifest.cards.filter((c) => c.name).length;
   console.log(
     `   ${manifest.maps.length} maps · ${manifest.cards.length} cards (${named} named) · ${manifest.tokens.length} minis`,
   );
+  const scenes = manifest.encounters.filter((e) => e.kind === 'scene').length;
+  const links = manifest.encounters.reduce((n, e) => n + (e.links?.length ?? 0), 0);
   console.log(
-    `   ${manifest.encounters.length} encounters · ${withMap} with a map · ${withText} with read-aloud text`,
+    `   ${manifest.encounters.length} encounters (${scenes} scenes, ${manifest.encounters.length - scenes} fights) · ` +
+      `${withMap} with a map · ${withText} with read-aloud · ${links} branch links`,
   );
   for (const u of manifest.unresolved) console.log(`   note: ${u.reason}`);
 }

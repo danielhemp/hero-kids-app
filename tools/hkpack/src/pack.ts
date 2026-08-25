@@ -251,7 +251,7 @@ export async function buildPack(opts: PackOptions): Promise<{ manifest: Manifest
     kind: /core rules/i.test(info.subject) ? 'core' : 'adventure',
     generated: new Date().toISOString().slice(0, 10),
     source: { file: path.basename(pdfFile), pages: info.pages },
-    intro: prose.intro,
+    front: prose.front,
     encounters: prose.encounters,
     maps: maps.map((m) => m.asset),
     cards,

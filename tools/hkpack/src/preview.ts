@@ -81,20 +81,34 @@ export function renderPreview(manifest: Manifest): string {
               .join(', ')}</td></tr>`,
         )
         .join('');
+      const sections = e.sections
+        .map(
+          (s) => `<div class="sect">
+        <h4>${escapeHtml(s.title)} <small>${s.key}</small></h4>
+        ${s.readAloud.map((t) => `<blockquote>${escapeHtml(t)}</blockquote>`).join('')}
+        ${(s.body ?? '')
+          .split('\n\n')
+          .filter(Boolean)
+          .map((para) => `<p>${escapeHtml(para)}</p>`)
+          .join('')}
+      </div>`,
+        )
+        .join('');
+      const links = e.links.length
+        ? `<p class="links">Leads to: ${e.links
+            .map((l) => `<b>${l.to}</b> — ${escapeHtml(l.label)}`)
+            .join('<br>')}</p>`
+        : '';
       return `<section class="encounter">
-  <h3>${e.n}${e.part ?? ''}. ${escapeHtml(e.title)} <small>page ${e.page}</small></h3>
+  <h3>${e.n}${e.part ?? ''}. ${escapeHtml(e.title)}
+    <small>${e.kind} · page ${e.page}</small></h3>
   <div class="cols">
     <div>
-      ${mapNames || '<p class="warn">no map matched</p>'}
+      ${mapNames || (e.kind === 'combat' ? '<p class="warn">no map matched</p>' : '<p class="muted">no map — a scene</p>')}
       ${roster ? `<table>${roster}</table>` : '<p class="muted">no monsters</p>'}
+      ${links}
     </div>
-    <div>
-      ${e.readAloud.map((t) => `<blockquote>${escapeHtml(t)}</blockquote>`).join('')}
-      ${e.features ? `<p><b>Features.</b> ${escapeHtml(e.features)}</p>` : ''}
-      ${e.abilityTests ? `<p><b>Ability tests.</b> ${escapeHtml(e.abilityTests)}</p>` : ''}
-      ${e.tactics ? `<p><b>Tactics.</b> ${escapeHtml(e.tactics)}</p>` : ''}
-      ${e.conclusion ? `<p><b>Conclusion.</b> ${escapeHtml(e.conclusion)}</p>` : ''}
-    </div>
+    <div>${sections}</div>
   </div>
 </section>`;
     })
@@ -139,6 +153,10 @@ export function renderPreview(manifest: Manifest): string {
   table { border-collapse: collapse; font-size: 13px; width: 100%; }
   td { border-top: 1px solid var(--line); padding: .25rem .4rem; }
   .problems li { color: var(--warn); }
+  .sect { margin-bottom: 1rem; }
+  .sect h4 { margin: 0 0 .35rem; font-size: .95rem; }
+  .sect h4 small { font-weight: 400; opacity: .5; }
+  .links { font-size: 13px; background: #fffdf7; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .7rem; }
   @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -156,6 +174,15 @@ in <code>manifest.json</code>, or nudge it in the app's calibration overlay.</p>
 
 <h2>Maps</h2>
 ${maps}
+
+<h2>Adventure</h2>
+${manifest.front
+  .map(
+    (s) => `<div class="sect"><h4>${escapeHtml(s.title)}</h4>
+    ${s.readAloud.map((t) => `<blockquote>${escapeHtml(t)}</blockquote>`).join('')}
+    ${(s.body ?? '').split('\n\n').filter(Boolean).map((p) => `<p>${escapeHtml(p)}</p>`).join('')}</div>`,
+  )
+  .join('')}
 
 <h2>Encounters</h2>
 ${encounters}

@@ -1026,3 +1026,149 @@ img {
     gap: 0.15rem;
   }
 }
+
+/* --- scene screen ---------------------------------------------------------- */
+
+.scene {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scene__head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: max(0.25rem, env(safe-area-inset-top)) 1rem 0.25rem;
+  background: var(--parchment);
+  border-bottom: 1px solid var(--rule);
+}
+
+.scene__where {
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.scene__body {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem calc(4rem + env(safe-area-inset-bottom));
+}
+
+.scene__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 1.6rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.scene__number {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--parchment);
+  background: var(--ink);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+.scene__fight {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: #fffdf7;
+  border: 1px solid var(--rule);
+  border-left: 5px solid var(--monster);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.scene__next {
+  margin-top: 2rem;
+  border-top: 2px solid var(--rule);
+  padding-top: 0.5rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.scene__choice {
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.8rem 1rem;
+}
+
+.scene__choice small {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+/* --- sections -------------------------------------------------------------- */
+
+.sect {
+  border-top: 1px solid var(--rule);
+}
+
+.sect__head {
+  appearance: none;
+  width: 100%;
+  background: none;
+  border: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: left;
+  padding: 0.7rem 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.sect__caret {
+  color: var(--ink-soft);
+  width: 1em;
+}
+
+.sect__badge {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.sect__body {
+  padding: 0 0 0.75rem 1.5rem;
+}
+
+.sect__body p {
+  margin: 0 0 0.7rem;
+  line-height: 1.5;
+}
+
+.bullets {
+  margin: 0 0 0.7rem;
+  padding-left: 1.1rem;
+  line-height: 1.5;
+}
+
+.bullets li {
+  margin-bottom: 0.3rem;
+}
+
+/* Read-aloud in a scene is the main event, so it is bigger than panel text. */
+.scene .readaloud {
+  font-size: 1.08rem;
+  padding: 1rem 1.1rem;
+}

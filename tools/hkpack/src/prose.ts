@@ -18,7 +18,7 @@
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { Encounter, MonsterGroup } from './types.ts';
+import type { Encounter, EncounterLink, MonsterGroup, Section } from './types.ts';
 
 const run = promisify(execFile);
 
@@ -49,27 +49,49 @@ export interface Block {
 }
 
 /**
- * Section headings collapse to a handful of buckets: the books use "Encounter
- * Intro" and "Intro" for the same thing, and "Combat Developments" is where a
- * fight's mid-battle boxed text lives.
+ * Headings normalise to a small set of keys so the app can treat them
+ * consistently — the books say both "Encounter Intro" and "Intro" for the same
+ * thing, and "Combat Developments" is where a fight's mid-battle text lives.
+ * Anything unrecognised keeps a slug of its own heading rather than being
+ * dropped: an unknown section is still the GM's text.
  */
 const SECTION_KEYS: Record<string, string> = {
   '': 'intro',
   'encounter intro': 'intro',
   intro: 'intro',
   'adventure intro': 'intro',
-  map: 'intro',
-  'combat map': 'intro',
+  'combat intro': 'combatIntro',
+  'combat introduction': 'combatIntro',
+  map: 'map',
+  'combat map': 'map',
   'encounter features': 'features',
   features: 'features',
   'ability tests': 'abilityTests',
   monsters: 'monsters',
   tactics: 'tactics',
-  'combat developments': 'tactics',
-  developments: 'tactics',
+  'combat developments': 'developments',
+  developments: 'developments',
+  development: 'developments',
   'role-playing': 'rolePlaying',
+  roleplaying: 'rolePlaying',
+  exploration: 'exploration',
   conclusion: 'conclusion',
+  rewards: 'rewards',
+  background: 'background',
+  'adventure overview': 'overview',
+  'continuing adventures': 'continuing',
 };
+
+function sectionKey(heading: string): string {
+  const clean = tidy(heading).toLowerCase();
+  return (
+    SECTION_KEYS[clean] ??
+    clean.replace(/[^a-z0-9]+(.)/g, (_, c: string) => c.toUpperCase()).replace(/[^a-zA-Z0-9]/g, '')
+  );
+}
+
+/** Sections that are page furniture rather than something to read at the table. */
+const SKIP_SECTIONS = new Set(['map', 'monsters']);
 
 const HEADINGS = new Set([
   'encounter intro',
@@ -294,17 +316,99 @@ function singular(name: string): string {
 }
 
 export interface ParsedProse {
-  intro: string;
+  front: Section[];
   encounters: Encounter[];
+}
+
+/** A cross-reference to another encounter, e.g. "Encounter 4a" or "Encounter 11". */
+const ENCOUNTER_REFERENCE = /Encounter\s+(\d+)\s*([a-z])?\b/gi;
+
+/**
+ * The branches the book offers at the end of a scene, pulled out of its prose:
+ * "South to Encounter 4: A Momentary Detour", "Proceed to Encounter 10: Dragon
+ * Prince Battle". The book's own sentence makes the button label, because it
+ * has already phrased it better than we could.
+ *
+ * An encounter can mention another one several times, and only one of those is
+ * an instruction — Encounter 9 mentions Encounter 10 twice while describing how
+ * the two maps join up, and once at the end to say where to go. So every
+ * mention is collected and then scored, rather than taking the first.
+ */
+const NAVIGATION_CUE =
+  /\b(?:proceed|continue|go|head|move|return|onwards?|back)\b[^.]{0,20}\bto\b|^\s*(?:north|south|east|west|up|down)\b|\bnext encounter\b/i;
+
+/** Where an instruction is likely to live, if it lives anywhere. */
+const NAVIGATION_SECTIONS = new Set(['conclusion', 'developments', 'rolePlaying', 'exploration']);
+
+function clauseAround(text: string, at: number, length: number): string {
+  // Bullets and newlines are boundaries alongside full stops: the books often
+  // offer a choice as a bulleted list with no sentence punctuation at all.
+  const BOUNDARY = /[.!?•\n]/;
+  let from = 0;
+  for (let i = at - 1; i >= 0; i--) {
+    if (BOUNDARY.test(text[i]!)) {
+      from = i + 1;
+      break;
+    }
+  }
+  let until = text.length;
+  for (let i = at + length; i < text.length; i++) {
+    if (BOUNDARY.test(text[i]!)) {
+      until = text[i] === '.' || text[i] === '!' ? i + 1 : i;
+      break;
+    }
+  }
+  return tidy(text.slice(from, until))
+    .replace(/^[•:\s]+/, '')
+    // The books space their punctuation loosely, and " ." on a button looks broken.
+    .replace(/\s+([.!?,:;])/g, '$1');
+}
+
+function findLinks(sections: Section[], self: string, known: Set<string>): EncounterLink[] {
+  const candidates = new Map<string, { label: string; score: number }>();
+
+  for (const section of sections) {
+    const text = [section.body ?? '', ...section.readAloud].join('\n');
+    for (const match of text.matchAll(ENCOUNTER_REFERENCE)) {
+      const to = `${match[1]}${(match[2] ?? '').toLowerCase()}`;
+      if (to === self || !known.has(to)) continue;
+
+      const label = clauseAround(text, match.index!, match[0].length);
+      if (!label || label.length > 120) continue;
+
+      let score = 0;
+      if (NAVIGATION_CUE.test(label)) score += 3;
+      if (NAVIGATION_SECTIONS.has(section.key)) score += 1;
+      // Between two equally-cued sentences, the terser one is the instruction.
+      score -= label.length / 500;
+
+      const best = candidates.get(to);
+      if (!best || score > best.score) candidates.set(to, { label, score });
+    }
+  }
+
+  return [...candidates].map(([to, { label }]) => ({ to, label }));
+}
+
+function encounterKeyOf(e: { n: number; part?: string }): string {
+  return `${e.n}${e.part ?? ''}`;
 }
 
 export async function parseProse(file: string): Promise<ParsedProse> {
   const blocks = await readBlocks(file);
 
   const encounters: Encounter[] = [];
-  const introParts: string[] = [];
+  const front: Section[] = [];
   let current: Encounter | null = null;
-  let section = '';
+  let section: Section | null = null;
+
+  /** Start a new section in whichever place we are currently writing. */
+  const openSection = (heading: string) => {
+    const key = sectionKey(heading);
+    section = { key, title: tidy(heading), readAloud: [] };
+    if (SKIP_SECTIONS.has(key)) return;
+    (current ? current.sections : front).push(section);
+  };
 
   for (const block of blocks) {
     if (block.kind === 'title') {
@@ -316,67 +420,52 @@ export async function parseProse(file: string): Promise<ParsedProse> {
           part: part || undefined,
           title: tidy(m[3] ?? '') || `Encounter ${m[1]}${part}`,
           page: block.page,
-          readAloud: [],
-          readAloudBySection: {},
+          kind: 'scene',
+          sections: [],
+          links: [],
           monstersByHeroCount: {},
         };
         encounters.push(current);
-        section = '';
+        // The lead paragraph before the first heading is the scene summary.
+        openSection('Intro');
         continue;
       }
       // A non-encounter chapter title ends whatever encounter we were in.
       current = null;
-      section = '';
+      openSection(block.text);
       continue;
     }
 
     if (block.kind === 'heading') {
-      section = tidy(block.text).toLowerCase();
+      openSection(block.text);
       continue;
     }
 
-    if (!current) {
-      if (block.kind === 'body' || block.kind === 'readAloud') introParts.push(block.text);
-      continue;
-    }
+    if (!section) openSection('Intro');
 
     if (block.kind === 'readAloud') {
-      const key = SECTION_KEYS[section] ?? section ?? 'intro';
-      (current.readAloudBySection[key] ??= []).push(block.text);
-      if (key === 'intro') current.readAloud.push(block.text);
+      section!.readAloud.push(block.text);
       continue;
     }
 
-    switch (section) {
-      case 'encounter features':
-      case 'features':
-        current.features = append(current.features, block.text);
-        break;
-      case 'ability tests':
-        current.abilityTests = append(current.abilityTests, block.text);
-        break;
-      case 'tactics':
-      case 'combat developments':
-      case 'developments':
-        current.tactics = append(current.tactics, block.text);
-        break;
-      case 'conclusion':
-        current.conclusion = append(current.conclusion, block.text);
-        break;
-      case 'monsters':
-        Object.assign(current.monstersByHeroCount, parseMonsters(block.text));
-        break;
-      default:
-        break;
+    // The monster roster is data, not prose, so it is parsed rather than kept.
+    if (section!.key === 'monsters') {
+      if (current) Object.assign(current.monstersByHeroCount, parseMonsters(block.text));
+      continue;
     }
+
+    section!.body = section!.body ? `${section!.body}\n\n${block.text}` : block.text;
+  }
+
+  const known = new Set(encounters.map(encounterKeyOf));
+  for (const encounter of encounters) {
+    encounter.kind = Object.keys(encounter.monstersByHeroCount).length ? 'combat' : 'scene';
+    encounter.sections = encounter.sections.filter((s) => s.body || s.readAloud.length);
+    encounter.links = findLinks(encounter.sections, encounterKeyOf(encounter), known);
   }
 
   return {
-    intro: introParts.slice(0, 6).join('\n\n'),
+    front: front.filter((s) => s.body || s.readAloud.length),
     encounters: encounters.sort((a, b) => a.n - b.n || (a.part ?? '').localeCompare(b.part ?? '')),
   };
-}
-
-function append(existing: string | undefined, text: string): string {
-  return existing ? `${existing}\n\n${text}` : text;
 }

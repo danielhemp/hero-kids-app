@@ -13,7 +13,8 @@
     "build:pages": "BASE_PATH=/hero-kids-app/ npm run build",
     "spike": "node e2e/spike-pairing.mjs",
     "e2e:two": "node e2e/two-ipads.mjs",
-    "e2e:check": "node e2e/diagnostics.mjs"
+    "e2e:check": "node e2e/diagnostics.mjs",
+    "e2e:walk": "node e2e/walkthrough.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.2",

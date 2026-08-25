@@ -13,6 +13,7 @@ import { HEALTH_LABELS } from '../types.ts';
 import { defaultPairing, findCard } from '../store/pairing.ts';
 import { rosterFor } from '../store/stage.ts';
 import { useAsset, useAssets } from '../store/useAssets.ts';
+import { Sections } from './Sections.tsx';
 
 export interface PlayHandlers {
   onMove: (tokenId: string, col: number, row: number) => void;
@@ -23,6 +24,8 @@ export interface PlayHandlers {
   onSetArt: (tokenId: string, art: string | undefined) => void;
   onChooseMap: (mapId: string) => void;
   onRestage: () => void;
+  /** back to the encounter's text, without disturbing the board */
+  onBackToScene: () => void;
   onExit: () => void;
 }
 
@@ -110,8 +113,8 @@ export function PlayScreen(props: Props) {
 
       <aside className="play__panel">
         <header className="panel__head">
-          <button type="button" className="btn btn--quiet" onClick={props.onExit}>
-            ‹ Encounters
+          <button type="button" className="btn btn--quiet" onClick={props.onBackToScene}>
+            ‹ Scene
           </button>
           <button type="button" className="btn btn--quiet" onClick={props.onOpenPairing}>
             {props.link}
@@ -129,15 +132,7 @@ export function PlayScreen(props: Props) {
 
         <MapChooser pack={pack} encounter={encounter} current={map.id} onChoose={props.onChooseMap} />
 
-        {(encounter.readAloudBySection?.intro ?? encounter.readAloud).map((text, i) => (
-          <ReadAloud key={i} text={text} />
-        ))}
-
-        <Section title="Encounter features" body={encounter.features} spoken={encounter.readAloudBySection?.features} />
-        <Section title="Ability tests" body={encounter.abilityTests} spoken={encounter.readAloudBySection?.abilityTests} />
-        <Section title="Tactics" body={encounter.tactics} spoken={encounter.readAloudBySection?.tactics} />
-        {/* Kept shut by default: this passage says how the fight ends. */}
-        <Section title="Conclusion" body={encounter.conclusion} spoken={encounter.readAloudBySection?.conclusion} />
+        <Sections sections={encounter.sections} lead />
 
         <h3 className="panel__h3">
           Monsters <small>for {partySize} hero{partySize === 1 ? '' : 'es'}</small>
@@ -166,6 +161,9 @@ export function PlayScreen(props: Props) {
 
         <button type="button" className="btn panel__restage" onClick={props.onRestage}>
           Reset the board
+        </button>
+        <button type="button" className="btn btn--quiet panel__restage" onClick={props.onExit}>
+          Leave the adventure
         </button>
       </aside>
 
@@ -255,30 +253,6 @@ function MapThumb({
         p{map.page} · {map.grid.cols}×{map.grid.rows}
       </small>
     </button>
-  );
-}
-
-function ReadAloud({ text }: { text: string }) {
-  const [read, setRead] = useState(false);
-  return (
-    <blockquote className={`readaloud ${read ? 'is-read' : ''}`} onClick={() => setRead((v) => !v)}>
-      {text}
-    </blockquote>
-  );
-}
-
-function Section({ title, body, spoken }: { title: string; body?: string; spoken?: string[] }) {
-  if (!body && !spoken?.length) return null;
-  return (
-    <details className="section">
-      <summary>{title}</summary>
-      {spoken?.map((text, i) => (
-        <ReadAloud key={`s${i}`} text={text} />
-      ))}
-      {body?.split('\n\n').map((para, i) => (
-        <p key={i}>{para}</p>
-      ))}
-    </details>
   );
 }
 

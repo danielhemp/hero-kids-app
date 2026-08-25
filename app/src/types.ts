@@ -7,7 +7,7 @@
  * refuses the pack rather than misreading it.
  */
 
-export const PACK_FORMAT = 2;
+export const PACK_FORMAT = 3;
 
 export type PackKind = 'core' | 'adventure';
 
@@ -56,24 +56,34 @@ export interface MonsterGroup {
   count: number;
 }
 
+/**
+ * One printed section of an encounter — "Role-Playing", "Encounter Features",
+ * "Conclusion" — in the order the book prints them. Whole sections used to be
+ * dropped by the extractor, which left the pure conversation scenes almost
+ * empty; everything is kept now and the app decides what to show.
+ */
+export interface Section {
+  key: string;
+  title: string;
+  body?: string;
+  readAloud: string[];
+}
+
+/** "South to Encounter 4: A Momentary Detour" — a branch the players choose. */
+export interface EncounterLink {
+  to: string;
+  label: string;
+}
+
 export interface Encounter {
   n: number;
   part?: string;
   title: string;
   page: number;
+  kind: 'combat' | 'scene';
   mapIds?: string[];
-  /** boxed text from the encounter's intro — what the GM opens with */
-  readAloud: string[];
-  /**
-   * Every boxed passage keyed by the section it was printed under. The
-   * conclusion's passage spoils the end of the fight, so it belongs inside the
-   * Conclusion section rather than at the top of the GM screen.
-   */
-  readAloudBySection: Record<string, string[]>;
-  features?: string;
-  abilityTests?: string;
-  tactics?: string;
-  conclusion?: string;
+  sections: Section[];
+  links: EncounterLink[];
   monstersByHeroCount: Record<string, MonsterGroup[]>;
 }
 
@@ -84,7 +94,8 @@ export interface Manifest {
   kind: PackKind;
   generated: string;
   source: { file: string; pages: number };
-  intro?: string;
+  /** the adventure's own front matter — overview, background, the hook */
+  front: Section[];
   encounters: Encounter[];
   maps: MapAsset[];
   cards: CardAsset[];
@@ -132,6 +143,10 @@ export interface Party {
 }
 
 export interface BoardState {
+  /** where the party is in the adventure — moves without disturbing the board */
+  position?: { packId: string; encounter: string };
+  /** the fight currently laid out; unchanged while a conversation plays out, so
+   *  the table iPad keeps showing the last map rather than going blank */
   packId?: string;
   encounter?: string;
   mapId?: string;

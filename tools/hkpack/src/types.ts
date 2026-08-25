@@ -6,7 +6,7 @@
  * into the app itself.
  */
 
-export const PACK_FORMAT = 2;
+export const PACK_FORMAT = 3;
 
 export type PackKind = 'core' | 'adventure';
 
@@ -72,6 +72,35 @@ export interface MonsterGroup {
   count: number;
 }
 
+/**
+ * One printed section of an encounter — "Role-Playing", "Encounter Features",
+ * "Conclusion" — kept in the order the book prints them.
+ *
+ * The first version of this hardcoded four sections and dropped the rest, which
+ * quietly threw away every word of the role-playing scenes: in Reign of the
+ * Dragon five of the fourteen encounters are pure conversation, and for those
+ * the pack ended up holding almost nothing. Keep everything; let the app decide
+ * what to show.
+ */
+export interface Section {
+  /** normalised: intro, rolePlaying, features, abilityTests, monsters, tactics, exploration, developments, conclusion, rewards, or the heading slug */
+  key: string;
+  /** the heading exactly as printed */
+  title: string;
+  /** body prose, paragraphs separated by blank lines */
+  body?: string;
+  /** boxed text the GM reads out, in printed order */
+  readAloud: string[];
+}
+
+/** "South to Encounter 4: A Momentary Detour" — a branch the players choose. */
+export interface EncounterLink {
+  /** the encounter it points at, as an encounter key: "4a", "11" */
+  to: string;
+  /** the sentence that offers it, used as the button label */
+  label: string;
+}
+
 export interface Encounter {
   /** 1-based encounter number as printed */
   n: number;
@@ -80,20 +109,14 @@ export interface Encounter {
   title: string;
   /** source page in the PDF */
   page: number;
+  /** a fight, or a scene with no monsters in it */
+  kind: 'combat' | 'scene';
   /** maps matched to this encounter; a few battles span two facing maps */
   mapIds?: string[];
-  /** boxed text from the encounter's intro — what the GM opens with */
-  readAloud: string[];
-  /**
-   * Every boxed passage, keyed by the section it was printed under ("intro",
-   * "conclusion", "tactics"...). The conclusion's text gives away the end of the
-   * fight, so it must not sit at the top of a GM screen with the opening text.
-   */
-  readAloudBySection: Record<string, string[]>;
-  features?: string;
-  abilityTests?: string;
-  tactics?: string;
-  conclusion?: string;
+  /** every printed section, in order */
+  sections: Section[];
+  /** where this encounter can lead next */
+  links: EncounterLink[];
   /** keyed by hero count: "1", "2", "3", "4" */
   monstersByHeroCount: Record<string, MonsterGroup[]>;
 }
@@ -106,7 +129,8 @@ export interface Manifest {
   /** ISO date the pack was generated */
   generated: string;
   source: { file: string; pages: number };
-  intro?: string;
+  /** the adventure's own front matter — overview, background, the hook */
+  front: Section[];
   encounters: Encounter[];
   maps: MapAsset[];
   cards: CardAsset[];
