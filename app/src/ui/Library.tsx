@@ -11,6 +11,8 @@ import { useAsset } from '../store/useAssets.ts';
 
 interface Props {
   packs: Manifest[];
+  /** installed but built by an older hkpack — unusable until rebuilt */
+  stalePacks: { id: string; title: string; format: number }[];
   partySize: number;
   link: React.ReactNode;
   onOpenPairing: () => void;
@@ -20,7 +22,7 @@ interface Props {
   onDeletePack: (packId: string) => void;
 }
 
-export function Library({ packs, partySize, link, onOpenPairing, onImported, onOpenParty, onPlay, onDeletePack }: Props) {
+export function Library({ packs, stalePacks, partySize, link, onOpenPairing, onImported, onOpenParty, onPlay, onDeletePack }: Props) {
   const [openPackId, setOpenPackId] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -74,7 +76,16 @@ export function Library({ packs, partySize, link, onOpenPairing, onImported, onO
 
       {error && <p className="error">{error}</p>}
 
-      {packs.length === 0 ? (
+      {stalePacks.length > 0 && (
+        <p className="error">
+          {stalePacks.map((p) => p.title).join(', ')}{' '}
+          {stalePacks.length === 1 ? 'was' : 'were'} built by an older version of hkpack and
+          can't be read. Rebuild with <code>npm run pack</code> on the Mac, then add{' '}
+          {stalePacks.length === 1 ? 'it' : 'them'} again.
+        </p>
+      )}
+
+      {packs.length === 0 && stalePacks.length === 0 ? (
         <div className="empty">
           <h2>No content yet</h2>
           <p>

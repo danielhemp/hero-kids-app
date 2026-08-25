@@ -7,7 +7,7 @@
  * keeps the big map images out of JS memory until something actually shows one.
  */
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Manifest, Party } from '../types.ts';
+import { PACK_FORMAT, type Manifest, type Party } from '../types.ts';
 import type { LogState } from '../sync/oplog.ts';
 
 interface HeroKidsDB extends DBSchema {
@@ -51,12 +51,32 @@ export async function putPack(manifest: Manifest, files: Map<string, Blob>): Pro
   await tx.done;
 }
 
-export async function listPacks(): Promise<Manifest[]> {
+export interface InstalledPacks {
+  packs: Manifest[];
+  /** installed, but built by a version of hkpack this app cannot read */
+  stale: { id: string; title: string; format: number }[];
+}
+
+/**
+ * Packs already in IndexedDB are checked on the way out, not just on import.
+ * Bumping the pack format used to protect new imports while leaving whatever was
+ * already stored to be read with the wrong shape — which crashed the app to a
+ * blank screen the first time an old pack's encounter was opened.
+ */
+export async function listPacks(): Promise<InstalledPacks> {
   const database = await db();
   const rows = await database.getAll('packs');
-  return rows
-    .sort((a, b) => a.manifest.kind.localeCompare(b.manifest.kind) || a.installedAt - b.installedAt)
-    .map((r) => r.manifest);
+  const sorted = rows.sort(
+    (a, b) => a.manifest.kind.localeCompare(b.manifest.kind) || a.installedAt - b.installedAt,
+  );
+
+  const packs: Manifest[] = [];
+  const stale: InstalledPacks['stale'] = [];
+  for (const row of sorted) {
+    if (row.manifest.format === PACK_FORMAT) packs.push(row.manifest);
+    else stale.push({ id: row.id, title: row.manifest.title, format: row.manifest.format });
+  }
+  return { packs, stale };
 }
 
 export async function deletePack(packId: string): Promise<void> {

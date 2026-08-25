@@ -90,6 +90,21 @@ For fiddling on the LAN without publishing, `npm run dev:https` serves over TLS
 with a throwaway certificate. You have to tap through Safari's warning on each
 iPad, and the camera may still refuse an untrusted certificate.
 
+### When the screen is blank cream
+
+The packs on that iPad were built by an older `hkpack` than the app expects. The
+library now says so by name; if it crashed before getting that far, the error
+screen offers **Reset this iPad's data**. Either way the fix is the same:
+
+```sh
+cd tools/hkpack && npm run pack -- ../../pdfs/*.pdf && npm run verify
+```
+
+then AirDrop the rebuilt `.hkpack` files over and **Add pack** again.
+
+The pack format changes when the tool learns to extract something new, so this
+will happen again. It should never again be a blank screen.
+
 ## At the table
 
 Tap an encounter and you get **the book, not a battle map**: its intro, the
@@ -138,6 +153,7 @@ npm run e2e       # one iPad: import, stage, drag, snap to the printed grid
 npm run e2e:two   # two iPads: pair, sync, hide, disconnect, re-pair, merge
 npm run e2e:check # the pairing check itself, with the camera allowed and blocked
 npm run e2e:walk  # walk Reign of the Dragon: conversation, fight, branch, reload
+npm run e2e:recover # a pack from an older hkpack: a message, never a blank screen
 ```
 
 ## Copyright

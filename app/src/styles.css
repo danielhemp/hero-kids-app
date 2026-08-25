@@ -1172,3 +1172,63 @@ img {
   font-size: 1.08rem;
   padding: 1rem 1.1rem;
 }
+
+/* ---- crash screen ------------------------------------------------------ */
+/* Reached only when the tree throws. It has to be readable by someone who is
+   holding an iPad in a room full of children, so it is plain and large. */
+
+.crash {
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.crash__inner {
+  max-width: 34rem;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.6rem;
+}
+
+.crash__inner h1 {
+  margin: 0 0 0.6rem;
+  font-size: 1.5rem;
+}
+
+.crash__inner p {
+  line-height: 1.5;
+  margin: 0 0 0.9rem;
+}
+
+.crash__message {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  background: var(--parchment);
+  border-left: 4px solid var(--monster);
+  border-radius: 0 6px 6px 0;
+  padding: 0.6rem 0.8rem;
+  word-break: break-word;
+}
+
+.crash__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.1rem 0 0.9rem;
+}
+
+.crash__detail pre {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  max-height: 14rem;
+  overflow: auto;
+  background: var(--parchment);
+  border-radius: 8px;
+  padding: 0.7rem;
+  white-space: pre-wrap;
+}

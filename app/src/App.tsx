@@ -38,12 +38,19 @@ export function App() {
   // fight is on the table.
   useWakeLock(screen === 'board' || screen === 'scene');
 
-  const refreshPacks = useCallback(async () => setPacks(await listPacks()), []);
+  const [stalePacks, setStalePacks] = useState<{ id: string; title: string; format: number }[]>([]);
+
+  const refreshPacks = useCallback(async () => {
+    const installed = await listPacks();
+    setPacks(installed.packs);
+    setStalePacks(installed.stale);
+  }, []);
 
   useEffect(() => {
     void (async () => {
       const [installed, savedParty] = await Promise.all([listPacks(), loadParty()]);
-      setPacks(installed);
+      setPacks(installed.packs);
+      setStalePacks(installed.stale);
       if (savedParty) setParty(savedParty);
       setPacksReady(true);
     })();
@@ -246,6 +253,7 @@ export function App() {
     <>
       <Library
         packs={packs}
+        stalePacks={stalePacks}
         partySize={Math.max(1, party.heroes.length)}
         link={<LinkChip session={session} />}
         onOpenPairing={() => setPairingOpen(true)}
