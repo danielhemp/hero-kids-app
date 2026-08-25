@@ -32,6 +32,7 @@ export interface PlayHandlers {
 interface Props extends PlayHandlers {
   link: React.ReactNode;
   onOpenPairing: () => void;
+  onOpenRules: () => void;
   pack: Manifest;
   encounter: Encounter;
   map: MapAsset;
@@ -115,6 +116,9 @@ export function PlayScreen(props: Props) {
         <header className="panel__head">
           <button type="button" className="btn btn--quiet" onClick={props.onBackToScene}>
             ‹ Scene
+          </button>
+          <button type="button" className="btn btn--quiet" onClick={props.onOpenRules}>
+            Rules
           </button>
           <button type="button" className="btn btn--quiet" onClick={props.onOpenPairing}>
             {props.link}

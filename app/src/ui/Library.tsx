@@ -16,6 +16,7 @@ interface Props {
   partySize: number;
   link: React.ReactNode;
   onOpenPairing: () => void;
+  onOpenRules: () => void;
   onImported: () => void;
   onOpenParty: () => void;
   /** the adventure's own opening pages, before Encounter 1 */
@@ -30,6 +31,7 @@ export function Library({
   partySize,
   link,
   onOpenPairing,
+  onOpenRules,
   onImported,
   onOpenParty,
   onOpenFront,
@@ -69,6 +71,9 @@ export function Library({
         <div className="library__actions">
           <button type="button" className="btn btn--quiet" onClick={onOpenPairing}>
             {link}
+          </button>
+          <button type="button" className="btn btn--quiet" onClick={onOpenRules}>
+            Rules
           </button>
           <button type="button" className="btn" onClick={onOpenParty}>
             Party ({partySize})

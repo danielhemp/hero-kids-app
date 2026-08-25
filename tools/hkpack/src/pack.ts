@@ -238,6 +238,14 @@ export async function buildPack(opts: PackOptions): Promise<{ manifest: Manifest
   }
   log(`  ${prose.encounters.length} encounters, ${usedMaps.size}/${maps.length} maps matched`);
 
+  const kind = /core rules/i.test(info.subject) ? 'core' : 'adventure';
+  // The same sections are reachable both ways; ship whichever organisation the
+  // book actually has, rather than both. The rulebook has chapters and no
+  // encounters; an adventure has encounters and a few pages before the first.
+  const front = kind === 'core' ? [] : prose.front;
+  const chapters = kind === 'core' ? prose.chapters : [];
+  if (kind === 'core') log(`  ${chapters.length} rules chapters`);
+
   const manifest: Manifest = {
     format: PACK_FORMAT,
     id,
@@ -248,10 +256,11 @@ export async function buildPack(opts: PackOptions): Promise<{ manifest: Manifest
         .replace(/^(Fantasy\s+)?Adventure\s*[-–]\s*/i, '')
         .replace(/\s*[-–]\s*Printer Friendly$/i, '')
         .trim() || info.title,
-    kind: /core rules/i.test(info.subject) ? 'core' : 'adventure',
+    kind,
     generated: new Date().toISOString().slice(0, 10),
     source: { file: path.basename(pdfFile), pages: info.pages },
-    front: prose.front,
+    front,
+    chapters,
     encounters: prose.encounters,
     maps: maps.map((m) => m.asset),
     cards,

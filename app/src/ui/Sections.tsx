@@ -19,14 +19,26 @@ const OPEN_BY_DEFAULT = new Set(['intro', 'background', 'rolePlaying', 'explorat
 /** The conclusion gives away how the scene ends, so it stays shut until asked for. */
 const ALWAYS_CLOSED = new Set(['conclusion']);
 
-export function Sections({ sections, lead }: { sections: Section[]; lead?: boolean }) {
+export function Sections({
+  sections,
+  lead,
+  all,
+}: {
+  sections: Section[];
+  lead?: boolean;
+  /** open every section — for a search result, where the passage IS the answer */
+  all?: boolean;
+}) {
   return (
     <>
       {sections.map((section, index) => (
         <SectionBlock
           key={`${section.key}-${index}`}
           section={section}
-          open={Boolean(lead) && OPEN_BY_DEFAULT.has(section.key) && !ALWAYS_CLOSED.has(section.key)}
+          open={
+            all ||
+            (Boolean(lead) && OPEN_BY_DEFAULT.has(section.key) && !ALWAYS_CLOSED.has(section.key))
+          }
         />
       ))}
     </>

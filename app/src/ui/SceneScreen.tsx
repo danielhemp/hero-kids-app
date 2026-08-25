@@ -21,6 +21,7 @@ interface Props {
   fallback?: Encounter;
   link: React.ReactNode;
   onOpenPairing: () => void;
+  onOpenRules: () => void;
   onGo: (encounterKey: string) => void;
   onStartFight: () => void;
   onExit: () => void;
@@ -33,6 +34,7 @@ export function SceneScreen({
   fallback,
   link,
   onOpenPairing,
+  onOpenRules,
   onGo,
   onStartFight,
   onExit,
@@ -46,9 +48,14 @@ export function SceneScreen({
           ‹ Adventure
         </button>
         <span className="scene__where">{pack.title}</span>
-        <button type="button" className="btn btn--quiet" onClick={onOpenPairing}>
-          {link}
-        </button>
+        <span className="scene__tools">
+          <button type="button" className="btn btn--quiet" onClick={onOpenRules}>
+            Rules
+          </button>
+          <button type="button" className="btn btn--quiet" onClick={onOpenPairing}>
+            {link}
+          </button>
+        </span>
       </header>
 
       <div className="scene__body">

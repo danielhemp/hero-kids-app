@@ -19,6 +19,7 @@ import { PairSheet, LinkChip } from './ui/PairSheet.tsx';
 import { PartySetup } from './ui/PartySetup.tsx';
 import { PlayerScreen } from './ui/PlayerScreen.tsx';
 import { PlayScreen } from './ui/PlayScreen.tsx';
+import { RulesSheet } from './ui/RulesSheet.tsx';
 import { SceneScreen } from './ui/SceneScreen.tsx';
 
 type Screen = 'library' | 'party' | 'scene' | 'board';
@@ -30,6 +31,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>('library');
   const [packsReady, setPacksReady] = useState(false);
   const [pairingOpen, setPairingOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   const { board } = session;
   const ready = session.ready && packsReady;
@@ -135,6 +137,10 @@ export function App() {
 
   if (!ready) return <div className="loading">Loading…</div>;
 
+  // Opened over whatever is on screen — the board included — so looking a rule
+  // up mid-fight costs nothing and disturbs nothing.
+  const rulesSheet = rulesOpen && <RulesSheet packs={packs} onClose={() => setRulesOpen(false)} />;
+
   const pairSheet = pairingOpen && (
     <PairSheet
       session={session}
@@ -160,6 +166,7 @@ export function App() {
       <>
         <PartySetup packs={packs} party={party} onChange={setParty} onDone={() => setScreen('library')} />
         {pairSheet}
+        {rulesSheet}
       </>
     );
   }
@@ -181,6 +188,7 @@ export function App() {
           onMove={(id, col, row) => session.dispatch({ t: 'move', id, col, row })}
         />
         {pairSheet}
+        {rulesSheet}
       </>
     );
   }
@@ -195,11 +203,13 @@ export function App() {
           fallback={nextInOrder(encounter)}
           link={<LinkChip session={session} />}
           onOpenPairing={() => setPairingOpen(true)}
+          onOpenRules={() => setRulesOpen(true)}
           onGo={(key) => goTo(pack, key)}
           onStartFight={() => startFight(pack, encounter)}
           onExit={() => setScreen('library')}
         />
         {pairSheet}
+        {rulesSheet}
       </>
     );
   }
@@ -215,6 +225,7 @@ export function App() {
           partySize={Math.max(1, party.heroes.length)}
           link={<LinkChip session={session} />}
           onOpenPairing={() => setPairingOpen(true)}
+          onOpenRules={() => setRulesOpen(true)}
           onMove={(id, col, row) => session.dispatch({ t: 'move', id, col, row })}
           onHealth={(id, h: Health) => session.dispatch({ t: 'health', id, h })}
           onToggleHidden={(id) => {
@@ -251,6 +262,7 @@ export function App() {
           onExit={() => setScreen('library')}
         />
         {pairSheet}
+        {rulesSheet}
       </>
     );
   }
@@ -263,6 +275,7 @@ export function App() {
         partySize={Math.max(1, party.heroes.length)}
         link={<LinkChip session={session} />}
         onOpenPairing={() => setPairingOpen(true)}
+        onOpenRules={() => setRulesOpen(true)}
         onImported={() => void refreshPacks()}
         onOpenParty={() => setScreen('party')}
         onOpenFront={(chosenPack) => goTo(chosenPack, FRONT_KEY)}
@@ -274,6 +287,7 @@ export function App() {
         }}
       />
       {pairSheet}
+      {rulesSheet}
     </>
   );
 }

@@ -137,6 +137,13 @@ When a scene is a fight, **Set up the board** lays it out:
 
 No dice, no damage calculation, no initiative. The app is the map and the minis.
 
+**Rules** — in the header of every screen — opens the rulebook over whatever is
+already there. Nineteen chapters, `Health and Damage` through `Glossary`, and a
+search box, because the question is always asked mid-fight with everyone
+waiting: type *knocked out* and the passage is on screen in one tap. The board
+underneath is untouched; closing the sheet returns to the same minis, the same
+damage, the same everything.
+
 The table iPad shows the map, the party's cards and only the minis you have
 revealed — **Hide** on the GM's token bar keeps a monster staged but unseen. It
 stays on the last map through conversation scenes rather than blanking every
@@ -160,6 +167,7 @@ npm run e2e:two   # two iPads: pair, sync, hide, disconnect, re-pair, merge
 npm run e2e:check # the pairing check itself, with the camera allowed and blocked
 npm run e2e:walk  # walk Reign of the Dragon: conversation, fight, branch, reload
 npm run e2e:recover # a pack from an older hkpack: a message, never a blank screen
+npm run e2e:rules # look a rule up mid-fight and leave the board untouched
 ```
 
 ## Copyright
@@ -202,6 +210,7 @@ that is where the app will snap tokens all evening.
 | which map belongs to which encounter | matching the small map beside the text against the full-page maps |
 | read-aloud text | it is the only italic type in the book — minus the inline italic product names, which are put back into the sentence they came from |
 | the adventure's opening pages | the headed sections printed before Encounter 1 |
+| the rulebook's chapters | the core book sets chapter titles in small caps and sub-headings in title case, so the absence of a lower-case letter is the whole signal |
 | every section, in printed order | headings are the only bold-italic type |
 | which encounters are fights and which are conversations | whether a roster was printed |
 | where each scene leads | cross-references like "Proceed to Encounter 4a", scored so a map note doesn't win over an instruction |

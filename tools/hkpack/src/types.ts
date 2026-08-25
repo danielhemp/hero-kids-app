@@ -6,7 +6,7 @@
  * into the app itself.
  */
 
-export const PACK_FORMAT = 4;
+export const PACK_FORMAT = 5;
 
 export type PackKind = 'core' | 'adventure';
 
@@ -121,6 +121,19 @@ export interface Encounter {
   monstersByHeroCount: Record<string, MonsterGroup[]>;
 }
 
+/**
+ * One chapter of the rulebook — "Rolling for Stuff", "Health and Damage" — with
+ * the sub-headed parts printed under it. Adventures have none: their prose is
+ * organised by encounter, and what comes before Encounter 1 is `front`.
+ */
+export interface Chapter {
+  key: string;
+  title: string;
+  /** source page in the PDF, which is also the printed reading order */
+  page: number;
+  sections: Section[];
+}
+
 export interface Manifest {
   format: typeof PACK_FORMAT;
   id: string;
@@ -131,6 +144,8 @@ export interface Manifest {
   source: { file: string; pages: number };
   /** the adventure's own front matter — overview, background, the hook */
   front: Section[];
+  /** the rulebook's chapters, for a core pack; empty for an adventure */
+  chapters: Chapter[];
   encounters: Encounter[];
   maps: MapAsset[];
   cards: CardAsset[];

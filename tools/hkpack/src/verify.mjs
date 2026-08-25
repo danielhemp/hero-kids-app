@@ -134,6 +134,26 @@ for (const file of packs) {
     `   ${manifest.encounters.length} encounters (${scenes} scenes, ${manifest.encounters.length - scenes} fights) · ` +
       `${withMap} with a map · ${withText} with read-aloud · ${links} branch links`,
   );
+  // A core pack's whole job is the rules text, so a silent zero here is the
+  // failure that matters: the chapters come from a heading style the extractor
+  // has to recognise, and a book that changed its typesetting would yield none.
+  if (manifest.kind === 'core') {
+    const chapters = manifest.chapters ?? [];
+    const words = chapters.reduce(
+      (n, c) => n + c.sections.reduce((m, s) => m + (s.body ?? '').split(/\s+/).filter(Boolean).length, 0),
+      0,
+    );
+    console.log(
+      `   ${chapters.length} rules chapters · ${chapters.reduce((n, c) => n + c.sections.length, 0)} sections · ${words} words`,
+    );
+    check(chapters.length >= 5, 'the rulebook yielded almost no chapters — check the heading detection');
+    const thin = chapters.filter((c) => !c.sections.some((s) => (s.body ?? '').length > 120));
+    check(thin.length === 0, `chapters with no prose: ${thin.map((c) => c.title).join(', ')}`);
+    for (const c of chapters) {
+      check(!/^[A-Z\s!]+$/.test(c.title), `chapter title still in small caps: "${c.title}"`);
+    }
+  }
+
   for (const u of manifest.unresolved) console.log(`   note: ${u.reason}`);
 }
 

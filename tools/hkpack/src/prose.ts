@@ -33,9 +33,25 @@ interface TextRun {
   page: number;
   top: number;
   left: number;
+  width: number;
+  height: number;
   text: string;
   font: FontSpec;
 }
+
+/**
+ * Where the type sits, not where its box starts.
+ *
+ * The rulebook sets its headings in small caps — "PINT-SIZED HEROES" is a large
+ * P, a smaller INT, a large S and so on, each its own run. Bigger glyphs have a
+ * smaller `top`, so sorting by `top` deals the letters of one heading out into
+ * two interleaved streams and the pack ends up with a section called "EROES".
+ * Every run on a printed line shares a baseline whatever its size, so that is
+ * what reading order should follow.
+ */
+const baselineOf = (r: TextRun) => r.top + r.height;
+const sameLine = (a: TextRun, b: TextRun) =>
+  Math.abs(baselineOf(a) - baselineOf(b)) <= Math.max(3, Math.min(a.height, b.height) * 0.3);
 
 // "Encounter 5: Rat Den!", and the branching ones: "Encounter 4a: East Forest Road"
 const ENCOUNTER_TITLE = /^Encounter\s+(\d+)\s*([a-z])?\s*[:\-–—]?\s*(.*)$/i;
@@ -143,7 +159,7 @@ async function readRuns(file: string): Promise<{ runs: TextRun[]; pageWidth: num
   const fonts = new Map<string, FontSpec>();
 
   const lineRe =
-    /<page number="(\d+)"[^>]*width="(\d+)"|<fontspec id="(\d+)" size="(\d+)" family="([^"]*)"|<text top="(-?\d+)" left="(-?\d+)"[^>]*font="(\d+)">([\s\S]*?)<\/text>/g;
+    /<page number="(\d+)"[^>]*width="(\d+)"|<fontspec id="(\d+)" size="(\d+)" family="([^"]*)"|<text top="(-?\d+)" left="(-?\d+)" width="(-?\d+)" height="(-?\d+)" font="(\d+)">([\s\S]*?)<\/text>/g;
 
   for (const m of stdout.matchAll(lineRe)) {
     if (m[1] !== undefined) {
@@ -162,10 +178,18 @@ async function readRuns(file: string): Promise<{ runs: TextRun[]; pageWidth: num
       continue;
     }
     if (m[6] !== undefined) {
-      const font = fonts.get(m[8] ?? '');
-      const text = decodeEntities(m[9] ?? '');
+      const font = fonts.get(m[10] ?? '');
+      const text = decodeEntities(m[11] ?? '');
       if (!font || !text.trim()) continue;
-      runs.push({ page, top: Number(m[6]), left: Number(m[7]), text, font });
+      runs.push({
+        page,
+        top: Number(m[6]),
+        left: Number(m[7]),
+        width: Number(m[8]),
+        height: Number(m[9]),
+        text,
+        font,
+      });
     }
   }
   return { runs, pageWidth };
@@ -236,35 +260,58 @@ export async function readBlocks(file: string): Promise<Block[]> {
   for (const page of [...byPage.keys()].filter((p) => p > 1).sort((a, b) => a - b)) {
     const onPage = byPage.get(page)!;
     const mid = pageWidth / 2;
+    const byBaseline = (a: TextRun, b: TextRun) =>
+      sameLine(a, b) ? a.left - b.left : baselineOf(a) - baselineOf(b);
     const ordered = [
-      ...onPage.filter((r) => r.left < mid).sort((a, b) => a.top - b.top || a.left - b.left),
-      ...onPage.filter((r) => r.left >= mid).sort((a, b) => a.top - b.top || a.left - b.left),
+      ...onPage.filter((r) => r.left < mid).sort(byBaseline),
+      ...onPage.filter((r) => r.left >= mid).sort(byBaseline),
     ];
 
     let current: Block | null = null;
     let previous: TextRun | null = null;
-    for (const r of ordered) {
+    for (const [index, r] of ordered.entries()) {
       let kind = kindOf(r, scale);
       if (!kind) continue;
       const text = tidy(r.text);
       if (!text) continue;
 
-      // Italic does double duty: boxed text to read out, and product names set
-      // inline in ordinary prose — "requires a copy of the *Hero Kids* RPG",
-      // "*Reign of the Dragon* takes about two hours". Treating the second kind
-      // as read-aloud put a "2 to read" badge on a page with nothing to read and
-      // tore a hole in the sentence it was lifted from. A boxed paragraph starts
-      // its own line and fills it; an inline title is a few words sharing a line
-      // with the body text on either side.
-      if (
-        kind === 'readAloud' &&
-        current?.kind === 'body' &&
-        text.length < 45 &&
-        previous !== null &&
-        Math.abs(r.top - previous.top) <= scale.bodySize * 0.4
-      ) {
-        kind = 'body';
+      // Emphasis does double duty with structure. Italic marks boxed text to read
+      // out, but also product names set inline in prose — "requires a copy of the
+      // *Hero Kids* RPG". Bold-italic marks section headings, but also place names
+      // inside boxed text — the Brecken Vale description mentions *Rivenshore* and
+      // the *Camarva River* and used to arrive as six fragments with fake headings
+      // between them.
+      //
+      // What separates the two is the line. A heading owns its line; emphasis has
+      // prose beside it — before it, after it, or both — so look in both
+      // directions rather than only backwards, because the sentence can just as
+      // easily break across a line and leave the emphasised words sitting first.
+      const next = ordered[index + 1];
+      const prose = current?.kind === 'body' || current?.kind === 'readAloud';
+      const continues =
+        next !== undefined && sameLine(r, next) && ['body', 'readAloud'].includes(kindOf(next, scale) ?? '');
+      const inline =
+        prose && text.length < 45 && ((previous !== null && sameLine(previous, r)) || continues);
+
+      if (inline && current) {
+        if (kind === 'readAloud' && current.kind === 'body') kind = 'body';
+        else if (kind === 'heading') kind = current.kind;
       }
+
+      // Small caps: one printed heading arrives as several runs on one baseline,
+      // alternating large and small — "P" "INT" "-S" "IZED" "H" "EROES". The word
+      // spaces survive as leading or trailing whitespace on the runs themselves,
+      // which is more reliable than measuring the gap between two different sizes.
+      if (kind === 'title' && current?.kind === 'title' && previous !== null && sameLine(previous, r)) {
+        const spaced =
+          /\s$/.test(previous.text) ||
+          /^\s/.test(r.text) ||
+          r.left - (previous.left + previous.width) > previous.height * 0.5;
+        current.text += (spaced ? ' ' : '') + text;
+        previous = r;
+        continue;
+      }
+
       previous = r;
       // Headings and titles are always their own block; body and read-aloud
       // runs are single lines that need joining back into paragraphs.
@@ -336,7 +383,35 @@ function singular(name: string): string {
 
 export interface ParsedProse {
   front: Section[];
+  chapters: Chapter[];
   encounters: Encounter[];
+}
+
+/**
+ * The rulebook prints its chapter titles in small caps and its sub-headings in
+ * ordinary title case, both in the display face — so the only thing separating
+ * "ROLLING FOR STUFF" from "Attacking and Defending" is the absence of a
+ * lower-case letter. That is a thin signal, but it is the one the book uses.
+ */
+const isChapterTitle = (text: string) => !/[a-z]/.test(text) && tidy(text).length > 2;
+
+/** Page furniture and the card sections, which are pictures rather than rules. */
+const SKIP_CHAPTERS = new Set(['contents', 'tableOfContents', 'credits', 'heroes', 'monsters']);
+
+/** "ROLLING FOR STUFF" shouted back at the GM reads badly; the book only shouts
+ *  because it is setting small caps, which we cannot reproduce. */
+const SMALL_WORDS = new Set(['a', 'and', 'the', 'for', 'of', 'to', 'in', 'or', 'on', 'with']);
+
+function titleCase(text: string): string {
+  return tidy(text)
+    .toLowerCase()
+    .split(' ')
+    .map((word, i) =>
+      i > 0 && SMALL_WORDS.has(word) ? word : word.replace(/^[a-z]/, (c) => c.toUpperCase()),
+    )
+    .join(' ')
+    // "Pint-Sized", "Role-Playing" — the book hyphenates and capitalises both halves.
+    .replace(/-([a-z])/g, (_, c: string) => `-${c.toUpperCase()}`);
 }
 
 /** A cross-reference to another encounter, e.g. "Encounter 4a" or "Encounter 11". */
@@ -418,7 +493,9 @@ export async function parseProse(file: string): Promise<ParsedProse> {
 
   const encounters: Encounter[] = [];
   const front: Section[] = [];
+  const chapters: Chapter[] = [];
   let current: Encounter | null = null;
+  let chapter: Chapter | null = null;
   let section: Section | null = null;
 
   /** Start a new section in whichever place we are currently writing. */
@@ -427,6 +504,11 @@ export async function parseProse(file: string): Promise<ParsedProse> {
     section = { key, title: tidy(heading), readAloud: [] };
     if (SKIP_SECTIONS.has(key)) return;
     (current ? current.sections : front).push(section);
+    // A rulebook chapter holds the same section objects the flat front matter
+    // does; which of the two a pack ships is the writer's decision, not this
+    // parser's, and an adventure never grows chapters because its front matter
+    // is set in title case rather than small caps.
+    if (!current && chapter) chapter.sections.push(section);
   };
 
   for (const block of blocks) {
@@ -451,6 +533,14 @@ export async function parseProse(file: string): Promise<ParsedProse> {
       }
       // A non-encounter chapter title ends whatever encounter we were in.
       current = null;
+      if (isChapterTitle(block.text)) {
+        const key = sectionKey(block.text);
+        chapter = { key, title: titleCase(block.text), page: block.page, sections: [] };
+        if (!SKIP_CHAPTERS.has(key)) chapters.push(chapter);
+        // The paragraphs before the first sub-heading are the chapter's opening.
+        openSection('Intro');
+        continue;
+      }
       openSection(block.text);
       continue;
     }
@@ -483,8 +573,13 @@ export async function parseProse(file: string): Promise<ParsedProse> {
     encounter.links = findLinks(encounter.sections, encounterKeyOf(encounter), known);
   }
 
+  for (const c of chapters) c.sections = c.sections.filter((s) => s.body || s.readAloud.length);
+
   return {
     front: front.filter((s) => s.body || s.readAloud.length),
+    // A chapter with nothing under it is a divider page — "HEROES!" above eight
+    // pages of cards — rather than something to read.
+    chapters: chapters.filter((c) => c.sections.some((s) => (s.body ?? '').length > 120)),
     encounters: encounters.sort((a, b) => a.n - b.n || (a.part ?? '').localeCompare(b.part ?? '')),
   };
 }

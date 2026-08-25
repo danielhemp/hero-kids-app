@@ -1256,3 +1256,96 @@ img {
   padding: 0.7rem;
   white-space: pre-wrap;
 }
+
+/* ---- rules reference --------------------------------------------------- */
+/* Opened over the board mid-fight, so it is wide, scrolls on its own, and
+   never moves what is underneath it. */
+
+.rules {
+  justify-items: stretch;
+  text-align: left;
+  width: min(820px, 100%);
+  max-height: min(90vh, 100%);
+}
+
+.rules__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rules__head h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.rules__search {
+  font: inherit;
+  font-size: 1.05rem;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  min-height: 44px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.rules__toc {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.rules__toc button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.rules__toc small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--ink-soft);
+  /* A chapter's sub-headings are a hint at what is inside, not a second list. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rules__chapter {
+  margin: 0.2rem 0 0;
+  font-size: 1.15rem;
+}
+
+.rules__hits {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.rules__hit {
+  border-left: 3px solid var(--rule);
+  padding-left: 0.8rem;
+}
+
+.rules__where {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.scene__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
