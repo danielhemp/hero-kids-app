@@ -18,11 +18,24 @@ interface Props {
   onOpenPairing: () => void;
   onImported: () => void;
   onOpenParty: () => void;
+  /** the adventure's own opening pages, before Encounter 1 */
+  onOpenFront: (pack: Manifest) => void;
   onPlay: (pack: Manifest, encounter: Encounter) => void;
   onDeletePack: (packId: string) => void;
 }
 
-export function Library({ packs, stalePacks, partySize, link, onOpenPairing, onImported, onOpenParty, onPlay, onDeletePack }: Props) {
+export function Library({
+  packs,
+  stalePacks,
+  partySize,
+  link,
+  onOpenPairing,
+  onImported,
+  onOpenParty,
+  onOpenFront,
+  onPlay,
+  onDeletePack,
+}: Props) {
   const [openPackId, setOpenPackId] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -107,6 +120,16 @@ export function Library({ packs, stalePacks, partySize, link, onOpenPairing, onI
               </button>
             ))}
           </nav>
+
+          {/* Where the evening starts. The numbered encounters assume it has
+              been read — Basement O Rats' first line is "Following the adventure
+              intro…" — so it sits above them rather than in a menu. */}
+          {openPack && (openPack.front?.length ?? 0) > 0 && (
+            <button type="button" className="frontmatter" onClick={() => onOpenFront(openPack)}>
+              <b>Start here — the adventure's opening</b>
+              <small>{openPack.front.map((section) => section.title).join(' · ')}</small>
+            </button>
+          )}
 
           {openPack && (
             <ul className="encounters">

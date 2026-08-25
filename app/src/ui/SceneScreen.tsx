@@ -53,10 +53,13 @@ export function SceneScreen({
 
       <div className="scene__body">
         <h1 className="scene__title">
-          <span className="scene__number">
-            {encounter.n}
-            {encounter.part ?? ''}
-          </span>
+          {/* The front matter has no printed number, so it shows none. */}
+          {encounter.n > 0 && (
+            <span className="scene__number">
+              {encounter.n}
+              {encounter.part ?? ''}
+            </span>
+          )}
           {encounter.title}
         </h1>
 

@@ -8,8 +8,13 @@
 import { useState } from 'react';
 import type { Section } from '../types.ts';
 
-/** Sections that open by default: what the GM needs the moment they arrive. */
-const OPEN_BY_DEFAULT = new Set(['intro', 'rolePlaying', 'exploration', 'combatIntro']);
+/**
+ * Sections that open by default: what the GM needs the moment they arrive.
+ * `background` and `intro` are the adventure's opening pages — both are almost
+ * entirely boxed text to read out, so they lead; the prep notes printed between
+ * them (duration, improvisation, structure) stay folded until asked for.
+ */
+const OPEN_BY_DEFAULT = new Set(['intro', 'background', 'rolePlaying', 'exploration', 'combatIntro']);
 
 /** The conclusion gives away how the scene ends, so it stays shut until asked for. */
 const ALWAYS_CLOSED = new Set(['conclusion']);

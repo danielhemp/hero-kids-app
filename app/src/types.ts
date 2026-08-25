@@ -7,7 +7,7 @@
  * refuses the pack rather than misreading it.
  */
 
-export const PACK_FORMAT = 3;
+export const PACK_FORMAT = 4;
 
 export type PackKind = 'core' | 'adventure';
 
@@ -106,6 +106,35 @@ export interface Manifest {
 /** Stable key for an encounter within a pack: "4a", "11". */
 export function encounterKey(e: Encounter): string {
   return `${e.n}${e.part ?? ''}`;
+}
+
+/** Where the adventure's own opening pages live, alongside the numbered encounters. */
+export const FRONT_KEY = 'front';
+
+/**
+ * The pages before Encounter 1 — the background, the overview, and the boxed
+ * text that opens the evening — presented as a scene you walk into like any
+ * other. Encounter 1 of Basement O Rats literally begins "Following the
+ * adventure intro…", so this is not optional colour: without it the first thing
+ * the app says to the table refers back to something it never said.
+ *
+ * The book prints these pages with no encounter number, hence `n: 0`, which the
+ * scene screen reads as "no number to show".
+ */
+export function frontMatter(pack: Manifest): Encounter | undefined {
+  if (!pack.front?.length) return undefined;
+  const first = pack.encounters[0];
+  return {
+    n: 0,
+    title: 'Before you begin',
+    page: 1,
+    kind: 'scene',
+    sections: pack.front,
+    links: first
+      ? [{ to: encounterKey(first), label: `Begin — ${encounterKey(first)}. ${first.title}` }]
+      : [],
+    monstersByHeroCount: {},
+  };
 }
 
 // --- board state ------------------------------------------------------------

@@ -242,11 +242,30 @@ export async function readBlocks(file: string): Promise<Block[]> {
     ];
 
     let current: Block | null = null;
+    let previous: TextRun | null = null;
     for (const r of ordered) {
-      const kind = kindOf(r, scale);
+      let kind = kindOf(r, scale);
       if (!kind) continue;
       const text = tidy(r.text);
       if (!text) continue;
+
+      // Italic does double duty: boxed text to read out, and product names set
+      // inline in ordinary prose — "requires a copy of the *Hero Kids* RPG",
+      // "*Reign of the Dragon* takes about two hours". Treating the second kind
+      // as read-aloud put a "2 to read" badge on a page with nothing to read and
+      // tore a hole in the sentence it was lifted from. A boxed paragraph starts
+      // its own line and fills it; an inline title is a few words sharing a line
+      // with the body text on either side.
+      if (
+        kind === 'readAloud' &&
+        current?.kind === 'body' &&
+        text.length < 45 &&
+        previous !== null &&
+        Math.abs(r.top - previous.top) <= scale.bodySize * 0.4
+      ) {
+        kind = 'body';
+      }
+      previous = r;
       // Headings and titles are always their own block; body and read-aloud
       // runs are single lines that need joining back into paragraphs.
       if (kind === 'heading' || kind === 'title' || current === null || current.kind !== kind) {

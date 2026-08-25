@@ -6,7 +6,7 @@
  * into the app itself.
  */
 
-export const PACK_FORMAT = 3;
+export const PACK_FORMAT = 4;
 
 export type PackKind = 'core' | 'adventure';
 

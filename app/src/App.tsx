@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { Encounter, EncounterLink, Health, Manifest, Party } from './types.ts';
-import { encounterKey } from './types.ts';
+import { FRONT_KEY, encounterKey, frontMatter } from './types.ts';
 import { deletePack, forgetAssetUrls, listPacks, loadParty, saveParty } from './store/db.ts';
 import { artLookup, defaultPairing, findCard } from './store/pairing.ts';
 import { spawnCell, stageEncounter, tokenId } from './store/stage.ts';
@@ -76,7 +76,13 @@ export function App() {
   // fight the table iPad is showing.
   const here = board.position;
   const pack = packs.find((p) => p.id === here?.packId);
-  const encounter = pack?.encounters.find((e) => encounterKey(e) === here?.encounter);
+  // The adventure's opening pages are a position like any other, so the party
+  // can be "before Encounter 1" and still have that survive a reload.
+  const encounter = !pack
+    ? undefined
+    : here?.encounter === FRONT_KEY
+      ? frontMatter(pack)
+      : pack.encounters.find((e) => encounterKey(e) === here?.encounter);
 
   const boardPack = packs.find((p) => p.id === board.packId);
   const boardEncounter = boardPack?.encounters.find((e) => encounterKey(e) === board.encounter);
@@ -259,6 +265,7 @@ export function App() {
         onOpenPairing={() => setPairingOpen(true)}
         onImported={() => void refreshPacks()}
         onOpenParty={() => setScreen('party')}
+        onOpenFront={(chosenPack) => goTo(chosenPack, FRONT_KEY)}
         onPlay={(chosenPack, chosenEncounter) => goTo(chosenPack, encounterKey(chosenEncounter))}
         onDeletePack={async (packId) => {
           forgetAssetUrls(packId);

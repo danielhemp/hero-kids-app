@@ -107,6 +107,12 @@ will happen again. It should never again be a blank screen.
 
 ## At the table
 
+**Start here — the adventure's opening** sits above the encounter list: the
+background, the overview, and the boxed text that opens the evening. Encounter 1
+of Basement O Rats begins *"Following the adventure intro…"*, so this is not
+optional colour — the two read-aloud sections are open on arrival and the GM's
+prep notes stay folded between them.
+
 Tap an encounter and you get **the book, not a battle map**: its intro, the
 boxed text to read out, the role-playing notes, the ability tests. Five of Reign
 of the Dragon's fourteen encounters are pure conversation and have no map at all.
@@ -194,7 +200,8 @@ that is where the app will snap tokens all evening.
 | maps, cards, minis, illustrations | image geometry — minis are the cut-outs with a soft mask |
 | square size | the printed ruling, measured by frequency across the whole book |
 | which map belongs to which encounter | matching the small map beside the text against the full-page maps |
-| read-aloud text | it is the only italic type in the book |
+| read-aloud text | it is the only italic type in the book — minus the inline italic product names, which are put back into the sentence they came from |
+| the adventure's opening pages | the headed sections printed before Encounter 1 |
 | every section, in printed order | headings are the only bold-italic type |
 | which encounters are fights and which are conversations | whether a roster was printed |
 | where each scene leads | cross-references like "Proceed to Encounter 4a", scored so a map note doesn't win over an instruction |

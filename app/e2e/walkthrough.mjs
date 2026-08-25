@@ -47,6 +47,65 @@ const title = () => page.locator('.scene__title').innerText();
 const sectionTitles = () =>
   page.evaluate(() => [...document.querySelectorAll('.sect__head')].map((h) => h.innerText.trim().replace(/^[▸▾]\s*/, '').split('\n')[0]));
 
+console.log('\nthe adventure opens before Encounter 1');
+check(
+  (await page.locator('.frontmatter').count()) === 1,
+  'the library offers the opening pages above the encounters',
+);
+await page.locator('.frontmatter').click();
+await page.waitForSelector('.scene__title');
+check(/Before you begin/.test(await title()), `opened on "${(await title()).replace(/\n/g, ' ')}"`);
+check(
+  (await page.locator('.scene__number').count()) === 0,
+  'it shows no encounter number, because the book prints none',
+);
+
+const front = await sectionTitles();
+console.log('    sections:', front.join(' · '));
+check(front.includes('Background'), 'the Background is there');
+check(front.includes('Adventure Intro'), 'the Adventure Intro is there');
+check(
+  front.includes('Adventure Overview') && front.includes('Improvisation'),
+  "the GM's prep notes are there too, folded away",
+);
+
+const openFront = await page.evaluate(() =>
+  [...document.querySelectorAll('.sect.is-open .sect__head')].map((h) =>
+    h.innerText.trim().replace(/^[▾]\s*/, '').split('\n')[0],
+  ),
+);
+check(
+  openFront.includes('Background') && openFront.includes('Adventure Intro'),
+  `the two read-aloud sections lead: ${openFront.join(', ')}`,
+);
+check(
+  !openFront.includes('Improvisation'),
+  'the prep notes do not, so the boxed text is what you see',
+);
+check(
+  /You all live in Rivenshore/i.test(await page.locator('.scene__body').innerText()),
+  'the opening boxed text is on screen, ready to read out',
+);
+await page.screenshot({ path: path.join(here, 'shots', '10-front.png'), fullPage: true });
+
+console.log('\nand leads into Encounter 1');
+const begin = await page.locator('.scene__choice span').first().innerText();
+check(/^Begin — 1\./.test(begin), `the way on names the first encounter: "${begin}"`);
+await page.locator('.scene__choice').first().click();
+await page.waitForTimeout(300);
+check(/Dragon Came to Dinner/.test(await title()), 'arrived at Encounter 1');
+
+console.log('\nthe opening survives a reload');
+await page.locator('.frontmatter, .scene__head button:has-text("Adventure")').first().click();
+await page.waitForSelector('.frontmatter');
+await page.locator('.frontmatter').click();
+await page.waitForSelector('.scene__title');
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('.scene__title', { timeout: 15_000 });
+check(/Before you begin/.test(await title()), 'still on the opening pages after a reload');
+await page.locator('.scene__head button').first().click();
+await page.waitForSelector('.encounters__row');
+
 console.log('\nEncounter 1 — a conversation, no map');
 await page.locator('.encounters__button').first().click();
 await page.waitForSelector('.scene__title');
