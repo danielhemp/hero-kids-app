@@ -38,7 +38,12 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: app/package-lock.json
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
+        env:
+          # Playwright is a devDependency for the end-to-end tests. Its install
+          # script downloads ~500 MB of browsers, which this build never uses.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - run: npm run typecheck
       - name: Build
         run: npm run build
