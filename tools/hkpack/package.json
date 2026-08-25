@@ -1,0 +1,25 @@
+{
+  "name": "hkpack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turns a Hero Kids PDF into a .hkpack content bundle for the Hero Kids App",
+  "bin": {
+    "hkpack": "./src/cli.ts"
+  },
+  "scripts": {
+    "pack": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "verify": "node src/verify.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.35.3",
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/yazl": "^2.4.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

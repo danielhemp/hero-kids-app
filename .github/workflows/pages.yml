@@ -1,0 +1,60 @@
+# Publishes the app shell — and only the shell.
+#
+# No Hero Kids content is in this repository or in this build: maps, cards and
+# minis live in .hkpack files that stay on the iPads. What gets published is an
+# empty app that knows how to read one.
+#
+# The point of publishing at all is the certificate. Camera access, service
+# workers and Add to Home Screen all require a secure context, and a LAN address
+# like http://192.168.1.20:5173 is not one — so QR pairing cannot work there.
+# Installed once from https://, the app then runs entirely offline.
+name: Publish app
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Build
+        run: npm run build
+        env:
+          # Project pages are served from a subdirectory.
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

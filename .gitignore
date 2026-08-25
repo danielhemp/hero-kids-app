@@ -1,0 +1,24 @@
+# Source PDFs and everything derived from them are Justin Halliday's
+# commercial work. They must never be committed or published.
+pdfs/
+packs/
+build/
+*.pdf
+*.hkpack
+
+# Transfer archives dropped here by tooling. These bundle packs/ inside them,
+# so they carry the same copyrighted content past the rules above — which is
+# exactly what happened the first time this repo was committed with `git add -A`.
+_to_delete/
+*.tar.gz
+*.tgz
+*.zip
+
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+*.log
+
+# playwright output
+app/e2e/shots/

@@ -1,0 +1,37 @@
+{
+  "name": "hero-kids-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "e2e": "node e2e/run-encounter.mjs",
+    "dev:https": "HTTPS=1 vite --host",
+    "build:pages": "BASE_PATH=/hero-kids-app/ npm run build",
+    "spike": "node e2e/spike-pairing.mjs",
+    "e2e:two": "node e2e/two-ipads.mjs",
+    "e2e:check": "node e2e/diagnostics.mjs"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "idb": "^8.0.3",
+    "jsqr": "^1.4.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "playwright": "^1.62.1",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-plugin-pwa": "^1.0.3"
+  }
+}
