@@ -7,7 +7,7 @@
  * refuses the pack rather than misreading it.
  */
 
-export const PACK_FORMAT = 5;
+export const PACK_FORMAT = 6;
 
 export type PackKind = 'core' | 'adventure';
 
@@ -16,6 +16,17 @@ export interface Grid {
   rows: number;
   inset: { top: number; right: number; bottom: number; left: number };
   calibrated: boolean;
+}
+
+/**
+ * A position the book printed on the GM's copy of the map: a numbered circle for
+ * a monster, or the lettered circle where the heroes come in.
+ */
+export interface Marker {
+  /** "1".."8" for a monster position, or "entry" for where the heroes come in */
+  label: string;
+  col: number;
+  row: number;
 }
 
 export interface MapAsset {
@@ -27,6 +38,8 @@ export interface MapAsset {
   grid: Grid;
   page: number;
   label: string;
+  /** where the book says to put things, read off the GM's copy of this map */
+  markers: Marker[];
 }
 
 export type CardKind = 'hero' | 'monster' | 'unknown';

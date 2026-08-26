@@ -29,6 +29,20 @@ export function renderPreview(manifest: Manifest): string {
         const y = inset.top + r * cellH;
         lines.push(`<line x1="${inset.left}" y1="${y}" x2="${m.width - inset.right}" y2="${y}"/>`);
       }
+      // The positions read off the GM's copy of this map, drawn where the app
+      // will put things. This is the check that matters for placement: the
+      // numbers should land on the circles the book printed.
+      for (const marker of m.markers ?? []) {
+        const cx = inset.left + (marker.col + 0.5) * cellW;
+        const cy = inset.top + (marker.row + 0.5) * cellH;
+        const r = Math.min(cellW, cellH) * 0.42;
+        lines.push(
+          `<circle class="marker" cx="${cx}" cy="${cy}" r="${r}"/>` +
+            `<text class="marker" x="${cx}" y="${cy}" font-size="${(r * 1.2).toFixed(0)}">` +
+            `${marker.label === 'entry' ? 'H' : marker.label}</text>`,
+        );
+      }
+
       const users = manifest.encounters
         .filter((e) => (e.mapIds ?? []).includes(m.id))
         .map((e) => `Encounter ${e.n}${e.part ?? ''}`)
@@ -41,6 +55,11 @@ export function renderPreview(manifest: Manifest): string {
   <figcaption>
     <b>${m.id}</b> · page ${m.page} · ${m.width}×${m.height} @ ${m.ppi}dpi
     · <b>${cols}×${rows}</b> squares of ${cellW.toFixed(1)}px
+    · ${
+      (m.markers ?? []).length
+        ? `<span class="ok">${(m.markers ?? []).filter((k) => k.label !== 'entry').length} printed positions${(m.markers ?? []).some((k) => k.label === 'entry') ? ' + entry' : ''}</span>`
+        : '<span class="warn">no printed positions read</span>'
+    }
     ${users ? `· <span class="ok">${escapeHtml(users)}</span>` : '<span class="warn">· unused</span>'}
   </figcaption>
 </figure>`;
@@ -138,6 +157,8 @@ export function renderPreview(manifest: Manifest): string {
   .stack img, .stack svg { display: block; width: 100%; height: auto; }
   .stack svg { position: absolute; inset: 0; }
   .stack line { stroke: #e0217d; stroke-width: 3; opacity: .55; }
+  circle.marker { fill: none; stroke: #1667d6; stroke-width: 5; }
+  text.marker { fill: #1667d6; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
   figure { margin: 0 0 1.5rem; }
   figcaption { font-size: 13px; padding-top: .35rem; }
   .grid { display: grid; gap: 1rem; }
@@ -168,7 +189,9 @@ ${manifest.tokens.length} minis, ${manifest.encounters.length} encounters</p>
 
 <h2>Check first</h2>
 ${problems}
-<p>The pink overlay is where the app will snap tokens. It should sit on the printed
+<p>The blue circles are the monster positions read off the GM's copy of each map,
+and <b>H</b> is where the heroes come in. They should sit on the numbers the book
+printed. The pink overlay is where the app will snap tokens. It should sit on the printed
 squares. If a map is out, fix <code>grid.inset</code> or <code>grid.cols</code>/<code>rows</code>
 in <code>manifest.json</code>, or nudge it in the app's calibration overlay.</p>
 

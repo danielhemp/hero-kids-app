@@ -7,7 +7,7 @@ import { createWriteStream } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
 import yazl from 'yazl';
-import { listImages, pageText, pdfInfo } from './pdf.ts';
+import { extractImages, listImages, pageText, pdfInfo, type PdfImage } from './pdf.ts';
 import {
   extractPageImages,
   findTemplateObjects,
@@ -19,6 +19,7 @@ import { classifyAll, dedupeByObject, type ClassifiedImage } from './classify.ts
 import { gridFromDpi, gridsFromMeasurements, measureMap } from './grid.ts';
 import { parseProse } from './prose.ts';
 import { readCardName, ocrAvailable } from './names.ts';
+import { detectMarkers, readGlyphs } from './markers.ts';
 import {
   PACK_FORMAT,
   type CardAsset,
@@ -51,6 +52,75 @@ async function toWebp(src: string, dest: string, opts: { alpha: boolean; quality
 }
 
 /**
+ * Pull the book's circled digits out as matchable artwork.
+ *
+ * They are ordinary embedded images, one per digit, reused wherever the book
+ * prints a number — beside a roster line, beside a health box, and on the GM's
+ * copy of each map. Their soft mask carries the drawing; the colour plane is a
+ * flat grey, which is why the mask is what gets kept.
+ */
+async function extractGlyphs(
+  pdfFile: string,
+  workDir: string,
+  listing: PdfImage[],
+): Promise<{ objectId: number; file: string }[]> {
+  // A circled digit is small, square, and — because the book prints the same
+  // number beside a roster line, a health box and a map — reused across pages.
+  // That last test is what keeps dice faces and spot illustrations out.
+  const pagesPerObject = new Map<number, Set<number>>();
+  for (const image of listing) {
+    if (image.type !== 'image') continue;
+    let pages = pagesPerObject.get(image.objectId);
+    if (!pages) pagesPerObject.set(image.objectId, (pages = new Set()));
+    pages.add(image.page);
+  }
+  const candidates = listing.filter(
+    (i) =>
+      i.type === 'image' &&
+      i.width >= 40 &&
+      i.width < 130 &&
+      i.height >= 40 &&
+      i.height < 130 &&
+      Math.abs(i.width / i.height - 1) < 0.12 &&
+      (pagesPerObject.get(i.objectId)?.size ?? 0) >= 2,
+  );
+  if (!candidates.length) return [];
+
+  const outDir = path.join(workDir, 'glyphs');
+  await mkdir(outDir, { recursive: true });
+
+  const glyphs: { objectId: number; file: string }[] = [];
+  const taken = new Set<number>();
+  for (const page of [...new Set(candidates.map((c) => c.page))].sort((a, b) => a - b)) {
+    const seenHere = new Set<number>();
+    const wanted = candidates.filter((c) => {
+      if (c.page !== page || taken.has(c.objectId) || seenHere.has(c.objectId)) return false;
+      seenHere.add(c.objectId);
+      return true;
+    });
+    if (!wanted.length) continue;
+
+    const raw = path.join(workDir, 'glyphs-raw');
+    await rm(raw, { recursive: true, force: true });
+    await mkdir(raw, { recursive: true });
+    const files = await extractImages(pdfFile, page, page, path.join(raw, 'g'));
+    const onPage = listing.filter((r) => r.page === page);
+    for (const row of wanted) {
+      // pdfimages writes one file per listing row, in order, so a glyph's mask
+      // is the row immediately after the glyph itself.
+      const at = onPage.findIndex((r) => r.num === row.num);
+      const mask = files[at + 1];
+      if (!mask) continue;
+      const dest = path.join(outDir, `glyph-${row.objectId}.png`);
+      await sharp(mask).negate().toFile(dest);
+      glyphs.push({ objectId: row.objectId, file: dest });
+      taken.add(row.objectId);
+    }
+  }
+  return glyphs;
+}
+
+/**
  * Every encounter prints a small copy of its map beside the text. Matching that
  * thumbnail against the full-page maps at the back of the book is what tells us
  * which map belongs to which encounter — the PDF itself never says.
@@ -58,11 +128,13 @@ async function toWebp(src: string, dest: string, opts: { alpha: boolean; quality
 async function matchThumbnailsToMaps(
   thumbnails: ClassifiedImage[],
   maps: { asset: MapAsset; source: ExtractedImage }[],
-): Promise<Map<number, string[]>> {
+): Promise<{ byPage: Map<number, string[]>; thumbForMap: Map<string, ClassifiedImage> }> {
   const mapSigs = await Promise.all(
     maps.map(async (m) => ({ id: m.asset.id, sig: await signature(m.source.file) })),
   );
   const byPage = new Map<number, string[]>();
+  const thumbForMap = new Map<string, ClassifiedImage>();
+  const bestScore = new Map<string, number>();
 
   for (const thumb of thumbnails) {
     const sig = await signature(thumb.file);
@@ -88,8 +160,15 @@ async function matchThumbnailsToMaps(
     const list = byPage.get(thumb.page) ?? [];
     if (!list.includes(best.id)) list.push(best.id);
     byPage.set(thumb.page, list);
+
+    // Several pages can show the same map; the clearest copy is the one to read
+    // the markers off.
+    if (best.score > (bestScore.get(best.id) ?? 0)) {
+      bestScore.set(best.id, best.score);
+      thumbForMap.set(best.id, thumb);
+    }
   }
-  return byPage;
+  return { byPage, thumbForMap };
 }
 
 export async function buildPack(opts: PackOptions): Promise<{ manifest: Manifest; packFile: string }> {
@@ -151,6 +230,7 @@ export async function buildPack(opts: PackOptions): Promise<{ manifest: Manifest
         grid: measured?.grid ?? gridFromDpi(src.width, src.height, src.ppi),
         page: src.page,
         label: `Map ${i + 1} (p${src.page})`,
+        markers: [],
       },
       source: src,
     });
@@ -199,7 +279,28 @@ export async function buildPack(opts: PackOptions): Promise<{ manifest: Manifest
   // --- text -----------------------------------------------------------------
   const prose = await parseProse(pdfFile);
   const thumbnails = classified.filter((c) => c.role === 'thumbnail');
-  const mapsByPage = await matchThumbnailsToMaps(thumbnails, maps);
+  const { byPage: mapsByPage, thumbForMap } = await matchThumbnailsToMaps(thumbnails, maps);
+
+  // --- what the book says to put where --------------------------------------
+  const glyphFiles = await extractGlyphs(pdfFile, opts.workDir, listing);
+  const glyphs = await readGlyphs(glyphFiles);
+  let placed = 0;
+  for (const map of maps) {
+    const thumb = thumbForMap.get(map.asset.id);
+    if (!thumb || glyphs.length === 0) continue;
+    map.asset.markers = await detectMarkers({
+      thumbnail: thumb.file,
+      map: map.source.file,
+      width: map.asset.width,
+      height: map.asset.height,
+      grid: map.asset.grid,
+      glyphs,
+    });
+    if (map.asset.markers.length) placed++;
+  }
+  if (maps.length) {
+    log(`  ${glyphs.length} numbered markers known, positions read on ${placed}/${maps.length} maps`);
+  }
 
   const unresolved: Manifest['unresolved'] = [...gridWarnings];
 

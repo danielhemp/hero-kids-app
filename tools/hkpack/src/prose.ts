@@ -18,7 +18,7 @@
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { Encounter, EncounterLink, MonsterGroup, Section } from './types.ts';
+import type { Chapter, Encounter, EncounterLink, MonsterGroup, Section } from './types.ts';
 
 const run = promisify(execFile);
 
@@ -573,13 +573,13 @@ export async function parseProse(file: string): Promise<ParsedProse> {
     encounter.links = findLinks(encounter.sections, encounterKeyOf(encounter), known);
   }
 
-  for (const c of chapters) c.sections = c.sections.filter((s) => s.body || s.readAloud.length);
+  for (const c of chapters) c.sections = c.sections.filter((s: Section) => s.body || s.readAloud.length);
 
   return {
     front: front.filter((s) => s.body || s.readAloud.length),
     // A chapter with nothing under it is a divider page — "HEROES!" above eight
     // pages of cards — rather than something to read.
-    chapters: chapters.filter((c) => c.sections.some((s) => (s.body ?? '').length > 120)),
+    chapters: chapters.filter((c) => c.sections.some((s: Section) => (s.body ?? '').length > 120)),
     encounters: encounters.sort((a, b) => a.n - b.n || (a.part ?? '').localeCompare(b.part ?? '')),
   };
 }

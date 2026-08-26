@@ -1349,3 +1349,19 @@ img {
   align-items: center;
   gap: 0.25rem;
 }
+
+/* The book's printed monster positions, shown with the grid. */
+.board__marker circle {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  opacity: 0.75;
+}
+
+.board__marker text {
+  fill: var(--accent);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  opacity: 0.85;
+}

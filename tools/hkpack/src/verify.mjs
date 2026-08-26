@@ -87,6 +87,29 @@ for (const file of packs) {
     );
   }
 
+  for (const map of manifest.maps) {
+    const markers = map.markers ?? [];
+    check(Array.isArray(map.markers), `${map.id}: no markers field`);
+    const labels = markers.filter((k) => k.label !== 'entry').map((k) => k.label);
+    check(
+      new Set(labels).size === labels.length,
+      `${map.id}: the same number was read twice (${labels.join(', ')})`,
+    );
+    for (const marker of markers) {
+      check(
+        marker.col >= 0 && marker.col < map.grid.cols && marker.row >= 0 && marker.row < map.grid.rows,
+        `${map.id}: marker ${marker.label} at ${marker.col},${marker.row} is off the grid`,
+      );
+    }
+    // The book numbers its circles 1, 2, 3… with no gaps. A gap means one was
+    // misread, and the monster that belonged on it would be placed elsewhere.
+    const numbers = labels.map(Number).sort((a, b) => a - b);
+    check(
+      numbers.every((n, i) => n === i + 1),
+      `${map.id}: the numbers read are ${numbers.join(', ') || 'none'} — not a run from 1`,
+    );
+  }
+
   const mapIds = new Set(manifest.maps.map((m) => m.id));
   for (const e of manifest.encounters) {
     check(Number.isInteger(e.n) && e.n > 0, `encounter ${e.n}: bad number`);
@@ -151,6 +174,36 @@ for (const file of packs) {
     check(thin.length === 0, `chapters with no prose: ${thin.map((c) => c.title).join(', ')}`);
     for (const c of chapters) {
       check(!/^[A-Z\s!]+$/.test(c.title), `chapter title still in small caps: "${c.title}"`);
+    }
+  }
+
+  if (manifest.kind === 'adventure') {
+    const withMarkers = manifest.maps.filter((m) => (m.markers ?? []).length).length;
+    const positions = manifest.maps.reduce(
+      (n, m) => n + (m.markers ?? []).filter((k) => k.label !== 'entry').length,
+      0,
+    );
+    const entries = manifest.maps.filter((m) => (m.markers ?? []).some((k) => k.label === 'entry')).length;
+    console.log(
+      `   ${positions} printed monster positions across ${withMarkers} maps · ${entries} with a hero entry`,
+    );
+    // A fight whose map carries fewer circles than the roster needs will still
+    // work — the rest stage along the edge — but it is worth seeing.
+    for (const e of manifest.encounters) {
+      if (e.kind !== 'combat') continue;
+      const biggest = Math.max(
+        0,
+        ...Object.values(e.monstersByHeroCount).map((groups) =>
+          groups.reduce((n, g) => n + g.count, 0),
+        ),
+      );
+      const map = manifest.maps.find((m) => m.id === (e.mapIds ?? [])[0]);
+      const circles = (map?.markers ?? []).filter((k) => k.label !== 'entry').length;
+      if (map && circles < biggest) {
+        console.log(
+          `   note: encounter ${e.n}${e.part ?? ''} needs up to ${biggest} positions but ${map.id} gave ${circles} — the rest stage along the edge`,
+        );
+      }
     }
   }
 

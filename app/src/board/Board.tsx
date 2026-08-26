@@ -237,6 +237,25 @@ export function Board({
               const y = map.grid.inset.top + r * cell.height;
               return <line key={`r${r}`} x1={map.grid.inset.left} y1={y} x2={map.width - map.grid.inset.right} y2={y} />;
             })}
+
+            {/* The book's own numbered circles, so the GM can see where the
+                page put things and check the app agreed. They are drawn rather
+                than photographed: the printable map has no numbers on it, which
+                is the whole reason they had to be read off the GM's copy. */}
+            {(map.markers ?? []).map((marker) => {
+              const origin = cellOrigin(map, marker.col, marker.row);
+              const cx = origin.x + cell.width / 2;
+              const cy = origin.y + cell.height / 2;
+              const r = Math.min(cell.width, cell.height) * 0.42;
+              return (
+                <g key={`${marker.label}-${marker.col}-${marker.row}`} className="board__marker">
+                  <circle cx={cx} cy={cy} r={r} />
+                  <text x={cx} y={cy} fontSize={r * 1.1}>
+                    {marker.label === 'entry' ? '\u2691' : marker.label}
+                  </text>
+                </g>
+              );
+            })}
           </svg>
         )}
 

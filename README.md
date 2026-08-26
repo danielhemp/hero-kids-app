@@ -123,10 +123,11 @@ branches you get both, and it remembers which way you went.
 
 When a scene is a fight, **Set up the board** lays it out:
 
-- Monsters staged along the top of the map and the heroes along the bottom.
-  **Drag them onto the numbered circles printed on the map** — the numbers are
-  part of the map image, so the app can't place them for you, but a drag takes a
-  second and is never wrong.
+- **The monsters are already on their numbered circles and the heroes on the
+  entry**, because the book says where they go and the pack knows. Turn on
+  **Grid** to see the printed positions, including the ones a smaller party
+  doesn't use. Where a map has no markers, everything stages along an edge to
+  drag into place instead.
 - Drag with one finger, pan with one finger on empty map, pinch to zoom.
 - Tap a mini for its bar: **OK / 1 / 2 / KO** marks damage exactly like the
   printed health boxes, **Card** shows its stat card, **Mini** swaps the artwork,
@@ -168,6 +169,7 @@ npm run e2e:check # the pairing check itself, with the camera allowed and blocke
 npm run e2e:walk  # walk Reign of the Dragon: conversation, fight, branch, reload
 npm run e2e:recover # a pack from an older hkpack: a message, never a blank screen
 npm run e2e:rules # look a rule up mid-fight and leave the board untouched
+npm run e2e:place # minis land on the circles the book printed
 ```
 
 ## Copyright
@@ -197,9 +199,11 @@ Each run writes `packs/<name>.hkpack` and `build/<name>/preview/preview.html`.
   without it they come out blank and get typed into `manifest.json` by hand.
 - **imagemagick** is only needed by `npm run verify`.
 
-Open the preview before putting a pack on an iPad. The thing to check is the
-pink grid overlay on each map: it should sit on the printed squares, because
-that is where the app will snap tokens all evening.
+Open the preview before putting a pack on an iPad. Two things to check on each
+map: the pink grid should sit on the printed squares, because that is where the
+app will snap tokens all evening, and the blue circles should sit where the GM's
+copy of the map prints its numbers, because that is where the monsters will
+start.
 
 ### What the tool works out on its own
 
@@ -208,6 +212,7 @@ that is where the app will snap tokens all evening.
 | maps, cards, minis, illustrations | image geometry — minis are the cut-outs with a soft mask |
 | square size | the printed ruling, measured by frequency across the whole book |
 | which map belongs to which encounter | matching the small map beside the text against the full-page maps |
+| where each monster starts | the GM's copy of the map is the printable copy plus the markers, so subtracting one from the other leaves exactly the numbered circles and the hero entry |
 | read-aloud text | it is the only italic type in the book — minus the inline italic product names, which are put back into the sentence they came from |
 | the adventure's opening pages | the headed sections printed before Encounter 1 |
 | the rulebook's chapters | the core book sets chapter titles in small caps and sub-headings in title case, so the absence of a lower-case letter is the whole signal |
